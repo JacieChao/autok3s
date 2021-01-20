@@ -3,12 +3,16 @@ package alibaba
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rancher/wrangler/pkg/schemas"
 
 	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/common"
@@ -86,11 +90,11 @@ type Alibaba struct {
 
 func init() {
 	providers.RegisterProvider(ProviderName, func() (providers.Provider, error) {
-		return NewProvider(), nil
+		return newProvider(), nil
 	})
 }
 
-func NewProvider() *Alibaba {
+func newProvider() *Alibaba {
 	return &Alibaba{
 		Metadata: types.Metadata{
 			Provider:               ProviderName,
@@ -132,6 +136,7 @@ func (p *Alibaba) GenerateClusterName() {
 func (p *Alibaba) CreateK3sCluster(ssh *types.SSH) (err error) {
 	p.logger = common.NewLogger(common.Debug)
 	p.logger.Infof("[%s] executing create logic...\n", p.GetProviderName())
+	p.logger.Infof("[%s] begin to create cluster %s \n", p.GetProviderName(), p.Name)
 	if ssh.User == "" {
 		ssh.User = defaultUser
 	}
@@ -353,7 +358,7 @@ func (p *Alibaba) StopK3sCluster(f bool) error {
 	return nil
 }
 
-func (p *Alibaba) SSHK3sNode(ssh *types.SSH) error {
+func (p *Alibaba) SSHK3sNode(ssh *types.SSH, node string) error {
 	p.logger = common.NewLogger(common.Debug)
 	p.logger.Infof("[%s] executing ssh logic...\n", p.GetProviderName())
 
@@ -404,15 +409,16 @@ func (p *Alibaba) SSHK3sNode(ssh *types.SSH) error {
 	if err != nil {
 		return fmt.Errorf("[%s] synchronizing .state file error, msg: [%v]", p.GetProviderName(), err)
 	}
+	if node == "" {
+		node = strings.Split(utils.AskForSelectItem(fmt.Sprintf("[%s] choose ssh node to connect", p.GetProviderName()), ids), " (")[0]
+	}
 
-	ip := strings.Split(utils.AskForSelectItem(fmt.Sprintf("[%s] choose ssh node to connect", p.GetProviderName()), ids), " (")[0]
-
-	if ip == "" {
+	if node == "" {
 		return fmt.Errorf("[%s] choose incorrect ssh node", p.GetProviderName())
 	}
 
 	// ssh K3s node.
-	if err := cluster.SSHK3sNode(ip, c, ssh); err != nil {
+	if err := cluster.SSHK3sNode(node, c, ssh); err != nil {
 		return err
 	}
 
@@ -593,6 +599,51 @@ func (p *Alibaba) DescribeCluster(kubecfg string) *types.ClusterInfo {
 		c.Version = types.ClusterStatusUnknown
 	}
 	return c
+}
+
+func (p *Alibaba) GetClusterConfig() (map[string]schemas.Field, error) {
+	config := p.GetSSHConfig()
+	sshConfig, err := utils.ConvertToFields(*config)
+	if err != nil {
+		return nil, err
+	}
+	metaConfig, err := utils.ConvertToFields(p.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range sshConfig {
+		metaConfig[k] = v
+	}
+	return metaConfig, nil
+}
+
+func (p *Alibaba) GetProviderOption() (map[string]schemas.Field, error) {
+	return utils.ConvertToFields(p.Options)
+}
+
+func (p *Alibaba) SetConfig(config []byte) error {
+	c := types.Cluster{}
+	err := json.Unmarshal(config, &c)
+	if err != nil {
+		return err
+	}
+	sourceMeta := reflect.ValueOf(&p.Metadata).Elem()
+	targetMeta := reflect.ValueOf(&c.Metadata).Elem()
+	utils.MergeConfig(sourceMeta, targetMeta)
+	sourceOption := reflect.ValueOf(&p.Options).Elem()
+	b, err := json.Marshal(c.Options)
+	if err != nil {
+		return err
+	}
+	opt := &alibaba.Options{}
+	err = json.Unmarshal(b, opt)
+	if err != nil {
+		return err
+	}
+	targetOption := reflect.ValueOf(opt).Elem()
+	utils.MergeConfig(sourceOption, targetOption)
+
+	return nil
 }
 
 func (p *Alibaba) generateClientSDK() error {
@@ -1497,7 +1548,8 @@ func (p *Alibaba) createKeyPair(ssh *types.SSH) (string, error) {
 	if p.KeyPair != "" && ssh.SSHKeyPath == "" {
 		return "", fmt.Errorf("[%s] calling preflight error: --ssh-key-path must set with --key-pair %s", p.GetProviderName(), p.KeyPair)
 	}
-	return putil.CreateKeyPair(ssh, p.GetProviderName(), p.Name, p.KeyPair)
+	pk, err := putil.CreateKeyPair(ssh, p.GetProviderName(), p.Name, p.KeyPair)
+	return string(pk), err
 }
 
 func (p *Alibaba) generateDefaultVPC() error {

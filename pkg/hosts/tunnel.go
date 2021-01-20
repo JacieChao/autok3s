@@ -6,6 +6,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/sirupsen/logrus"
+
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -25,6 +27,7 @@ type Tunnel struct {
 }
 
 func (t *Tunnel) Close() error {
+	logrus.Info("====== close tunnel ====")
 	return t.conn.Close()
 }
 
@@ -168,4 +171,8 @@ func (t *Tunnel) executeCommand(cmd string) error {
 	wg.Wait()
 
 	return err
+}
+
+func (t *Tunnel) Session() (*ssh.Session, error) {
+	return t.conn.NewSession()
 }

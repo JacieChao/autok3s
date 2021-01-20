@@ -5,12 +5,15 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cnrancher/autok3s/pkg/providers/amazone"
+
 	"github.com/cnrancher/autok3s/pkg/common"
 	"github.com/cnrancher/autok3s/pkg/providers"
 	"github.com/cnrancher/autok3s/pkg/providers/alibaba"
 	"github.com/cnrancher/autok3s/pkg/providers/tencent"
 	"github.com/cnrancher/autok3s/pkg/types"
 	typesAli "github.com/cnrancher/autok3s/pkg/types/alibaba"
+	typesAmazone "github.com/cnrancher/autok3s/pkg/types/amazone"
 	typesTencent "github.com/cnrancher/autok3s/pkg/types/tencent"
 	"github.com/cnrancher/autok3s/pkg/utils"
 
@@ -133,6 +136,16 @@ func GetProviderByState(c types.Cluster) (providers.Provider, error) {
 			return nil, err
 		}
 		return &tencent.Tencent{
+			Metadata: c.Metadata,
+			Options:  *option,
+			Status:   c.Status,
+		}, nil
+	case "amazone":
+		option := &typesAmazone.Options{}
+		if err := yaml.Unmarshal(b, option); err != nil {
+			return nil, err
+		}
+		return &amazone.Amazone{
 			Metadata: c.Metadata,
 			Options:  *option,
 			Status:   c.Status,

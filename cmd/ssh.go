@@ -4,6 +4,7 @@ import (
 	"github.com/cnrancher/autok3s/cmd/common"
 	"github.com/cnrancher/autok3s/pkg/providers"
 	"github.com/cnrancher/autok3s/pkg/types"
+	"github.com/cnrancher/autok3s/pkg/utils"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -23,13 +24,6 @@ var (
 
 func init() {
 	sshCmd.Flags().StringVarP(&sProvider, "provider", "p", sProvider, "Provider is a module which provides an interface for managing cloud resources")
-	sshCmd.Flags().StringVar(&sSSH.User, "ssh-user", sSSH.User, "SSH user for host")
-	sshCmd.Flags().StringVar(&sSSH.Port, "ssh-port", sSSH.Port, "SSH port for host")
-	sshCmd.Flags().StringVar(&sSSH.SSHKeyPath, "ssh-key-path", sSSH.SSHKeyPath, "SSH private key path")
-	sshCmd.Flags().StringVar(&sSSH.SSHKeyPassphrase, "ssh-key-pass", sSSH.SSHKeyPassphrase, "SSH passphrase of private key")
-	sshCmd.Flags().StringVar(&sSSH.SSHCertPath, "ssh-key-cert-path", sSSH.SSHCertPath, "SSH private key certificate path")
-	sshCmd.Flags().StringVar(&sSSH.Password, "ssh-password", sSSH.Password, "SSH login password")
-	sshCmd.Flags().BoolVar(&sSSH.SSHAgentAuth, "ssh-agent", sSSH.SSHAgentAuth, "Enable ssh agent")
 }
 
 func SSHCommand() *cobra.Command {
@@ -41,8 +35,16 @@ func SSHCommand() *cobra.Command {
 		} else {
 			sp = reg
 		}
+		sSSH = sp.GetSSHConfig()
+		sshCmd.Flags().StringVar(&sSSH.User, "ssh-user", sSSH.User, "SSH user for host")
+		sshCmd.Flags().StringVar(&sSSH.Port, "ssh-port", sSSH.Port, "SSH port for host")
+		sshCmd.Flags().StringVar(&sSSH.SSHKeyPath, "ssh-key-path", sSSH.SSHKeyPath, "SSH private key path")
+		sshCmd.Flags().StringVar(&sSSH.SSHKeyPassphrase, "ssh-key-pass", sSSH.SSHKeyPassphrase, "SSH passphrase of private key")
+		sshCmd.Flags().StringVar(&sSSH.SSHCertPath, "ssh-key-cert-path", sSSH.SSHCertPath, "SSH private key certificate path")
+		sshCmd.Flags().StringVar(&sSSH.Password, "ssh-password", sSSH.Password, "SSH login password")
+		sshCmd.Flags().BoolVar(&sSSH.SSHAgentAuth, "ssh-agent", sSSH.SSHAgentAuth, "Enable ssh agent")
 
-		sshCmd.Flags().AddFlagSet(sp.GetCredentialFlags(sshCmd))
+		sshCmd.Flags().AddFlagSet(utils.ConvertFlags(sshCmd, sp.GetCredentialFlags()))
 		sshCmd.Flags().AddFlagSet(sp.GetSSHFlags(sshCmd))
 		sshCmd.Example = sp.GetUsageExample("ssh")
 	}
@@ -61,8 +63,11 @@ func SSHCommand() *cobra.Command {
 
 	sshCmd.Run = func(cmd *cobra.Command, args []string) {
 		sp.GenerateClusterName()
-
-		if err := sp.SSHK3sNode(sSSH); err != nil {
+		node := ""
+		if len(args) > 0 {
+			node = args[0]
+		}
+		if err := sp.SSHK3sNode(sSSH, node); err != nil {
 			logrus.Fatalln(err)
 		}
 	}

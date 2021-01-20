@@ -34,6 +34,7 @@ var (
 		Factor:   1,
 		Steps:    5,
 	} // retry 5 times, total 120 seconds.
+	ClusterLogs = map[string]*LogWriter{}
 )
 
 func GetDefaultSSHKeyPath(clusterName, providerName string) string {

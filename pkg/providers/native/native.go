@@ -1,10 +1,15 @@
 package native
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/cnrancher/autok3s/pkg/utils"
+	"github.com/rancher/wrangler/pkg/schemas"
 
 	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/common"
@@ -236,7 +241,7 @@ func (p *Native) StopK3sCluster(f bool) error {
 	return p.CommandNotSupport("stop")
 }
 
-func (p *Native) SSHK3sNode(ssh *types.SSH) error {
+func (p *Native) SSHK3sNode(ssh *types.SSH, ip string) error {
 	return p.CommandNotSupport("ssh")
 }
 
@@ -254,6 +259,51 @@ func (p *Native) GetCluster(kubecfg string) *types.ClusterInfo {
 
 func (p *Native) IsClusterExist() (bool, []string, error) {
 	return false, []string{}, nil
+}
+
+func (p *Native) GetClusterConfig() (map[string]schemas.Field, error) {
+	config := p.GetSSHConfig()
+	sshConfig, err := utils.ConvertToFields(*config)
+	if err != nil {
+		return nil, err
+	}
+	metaConfig, err := utils.ConvertToFields(p.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range sshConfig {
+		metaConfig[k] = v
+	}
+	return metaConfig, nil
+}
+
+func (p *Native) GetProviderOption() (map[string]schemas.Field, error) {
+	return utils.ConvertToFields(p.Options)
+}
+
+func (p *Native) SetConfig(config []byte) error {
+	c := types.Cluster{}
+	err := json.Unmarshal(config, &c)
+	if err != nil {
+		return err
+	}
+	sourceMeta := reflect.ValueOf(&p.Metadata).Elem()
+	targetMeta := reflect.ValueOf(&c.Metadata).Elem()
+	utils.MergeConfig(sourceMeta, targetMeta)
+	sourceOption := reflect.ValueOf(&p.Options).Elem()
+	b, err := json.Marshal(c.Options)
+	if err != nil {
+		return err
+	}
+	opt := &native.Options{}
+	err = json.Unmarshal(b, opt)
+	if err != nil {
+		return err
+	}
+	targetOption := reflect.ValueOf(opt).Elem()
+	utils.MergeConfig(sourceOption, targetOption)
+
+	return nil
 }
 
 func (p *Native) assembleNodeStatus(ssh *types.SSH) (*types.Cluster, error) {

@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cnrancher/autok3s/pkg/types/amazone"
+
 	"github.com/cnrancher/autok3s/pkg/common"
 	"github.com/cnrancher/autok3s/pkg/hosts"
 	"github.com/cnrancher/autok3s/pkg/providers"
@@ -258,6 +260,7 @@ func JoinK3sNode(merged, added *types.Cluster) error {
 	for i := 0; i < len(added.Status.WorkerNodes); i++ {
 		for _, full := range merged.WorkerNodes {
 			extraArgs := merged.WorkerExtraArgs
+			logrus.Infof("===== added ins %v, merged ins %v", added.Status.WorkerNodes[i].InstanceID, full.InstanceID)
 			if added.Status.WorkerNodes[i].InstanceID == full.InstanceID {
 				go func(i int, full types.Node) {
 					logger.Infof("[%s] joining k3s worker-%d...\n", merged.Provider, i+1)
@@ -388,6 +391,10 @@ func ReadFromState(cluster *types.Cluster) ([]types.Cluster, error) {
 			}
 		case "tencent":
 			if option, ok := cluster.Options.(tencent.Options); ok {
+				name = fmt.Sprintf("%s.%s.%s", cluster.Name, option.Region, cluster.Provider)
+			}
+		case "amazone":
+			if option, ok := cluster.Options.(amazone.Options); ok {
 				name = fmt.Sprintf("%s.%s.%s", cluster.Name, option.Region, cluster.Provider)
 			}
 		}
@@ -733,16 +740,17 @@ func execute(host *hosts.Host, cmds []string) (string, error) {
 		_ = tunnel.Close()
 	}()
 
-	var (
-		stdout bytes.Buffer
-		stderr bytes.Buffer
-	)
-
 	for _, cmd := range cmds {
 		tunnel.Cmd(cmd)
 	}
 
-	if err := tunnel.SetStdio(&stdout, &stderr).Run(); err != nil {
+	var (
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	)
+	tunnel.SetStdio(&stdout, &stderr)
+
+	if err := tunnel.Run(); err != nil {
 		return "", fmt.Errorf("%w: %s", err, stderr.String())
 	}
 

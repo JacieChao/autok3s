@@ -3,12 +3,16 @@ package tencent
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rancher/wrangler/pkg/schemas"
 
 	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/common"
@@ -165,11 +169,11 @@ func (p *Tencent) CreateK3sCluster(ssh *types.SSH) (err error) {
 			// deploy additional Tencent cloud-controller-manager manifests.
 			tencentCCM := &tencent.CloudControllerManager{
 				Region:                base64.StdEncoding.EncodeToString([]byte(option.Region)),
-				SecretKey:             base64.StdEncoding.EncodeToString([]byte(option.SecretKey)),
-				SecretID:              base64.StdEncoding.EncodeToString([]byte(option.SecretID)),
 				VpcID:                 base64.StdEncoding.EncodeToString([]byte(option.VpcID)),
 				NetworkRouteTableName: base64.StdEncoding.EncodeToString([]byte(option.NetworkRouteTableName)),
 			}
+			tencentCCM.SecretID = base64.StdEncoding.EncodeToString([]byte(option.SecretID))
+			tencentCCM.SecretKey = base64.StdEncoding.EncodeToString([]byte(option.SecretKey))
 			if p.ClusterCIDR == "" {
 				p.ClusterCIDR = defaultCidr
 			}
@@ -358,7 +362,7 @@ func (p *Tencent) StopK3sCluster(f bool) error {
 	return nil
 }
 
-func (p *Tencent) SSHK3sNode(ssh *types.SSH) error {
+func (p *Tencent) SSHK3sNode(ssh *types.SSH, ip string) error {
 	p.logger = common.NewLogger(common.Debug)
 	p.logger.Infof("[%s] executing ssh logic...\n", p.GetProviderName())
 
@@ -404,7 +408,9 @@ func (p *Tencent) SSHK3sNode(ssh *types.SSH) error {
 		return fmt.Errorf("[%s] synchronizing .state file error, msg: [%v]", p.GetProviderName(), err)
 	}
 
-	ip := strings.Split(utils.AskForSelectItem(fmt.Sprintf("[%s] choose ssh node to connect", p.GetProviderName()), ids), " (")[0]
+	if ip == "" {
+		ip = strings.Split(utils.AskForSelectItem(fmt.Sprintf("[%s] choose ssh node to connect", p.GetProviderName()), ids), " (")[0]
+	}
 
 	if ip == "" {
 		return fmt.Errorf("[%s] choose incorrect ssh node", p.GetProviderName())
@@ -591,6 +597,51 @@ func (p *Tencent) DescribeCluster(kubecfg string) *types.ClusterInfo {
 	return c
 }
 
+func (p *Tencent) GetClusterConfig() (map[string]schemas.Field, error) {
+	config := p.GetSSHConfig()
+	sshConfig, err := utils.ConvertToFields(*config)
+	if err != nil {
+		return nil, err
+	}
+	metaConfig, err := utils.ConvertToFields(p.Metadata)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range sshConfig {
+		metaConfig[k] = v
+	}
+	return metaConfig, nil
+}
+
+func (p *Tencent) GetProviderOption() (map[string]schemas.Field, error) {
+	return utils.ConvertToFields(p.Options)
+}
+
+func (p *Tencent) SetConfig(config []byte) error {
+	c := types.Cluster{}
+	err := json.Unmarshal(config, &c)
+	if err != nil {
+		return err
+	}
+	sourceMeta := reflect.ValueOf(&p.Metadata).Elem()
+	targetMeta := reflect.ValueOf(&c.Metadata).Elem()
+	utils.MergeConfig(sourceMeta, targetMeta)
+	sourceOption := reflect.ValueOf(&p.Options).Elem()
+	b, err := json.Marshal(c.Options)
+	if err != nil {
+		return err
+	}
+	opt := &tencent.Options{}
+	err = json.Unmarshal(b, opt)
+	if err != nil {
+		return err
+	}
+	targetOption := reflect.ValueOf(opt).Elem()
+	utils.MergeConfig(sourceOption, targetOption)
+
+	return nil
+}
+
 func (p *Tencent) generateClientSDK() error {
 	if p.SecretID == "" {
 		p.SecretID = viper.GetString(p.GetProviderName(), secretID)
@@ -738,7 +789,7 @@ func (p *Tencent) generateInstance(fn checkFun, ssh *types.SSH) (*types.Cluster,
 
 	// assemble instance status.
 	var c *types.Cluster
-	if c, err = p.assembleInstanceStatus(ssh, needUploadKeyPair, pk); err != nil {
+	if c, err = p.assembleInstanceStatus(ssh, needUploadKeyPair, string(pk)); err != nil {
 		return nil, err
 	}
 
@@ -1817,6 +1868,7 @@ func (p *Tencent) operateCluster(expectStatus, targetStatus string, f bool, fn f
 	}
 
 	if err == nil && len(ids) > 0 {
+		logrus.Infof("", ids)
 		// ensure that the status of all instances is stopped.
 		if err := p.startAndStopCheck(expectStatus); err != nil {
 			return err

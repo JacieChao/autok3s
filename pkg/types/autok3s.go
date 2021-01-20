@@ -38,6 +38,7 @@ type Status struct {
 	Status      string `json:"status,omitempty"`
 	MasterNodes []Node `json:"master-nodes,omitempty"`
 	WorkerNodes []Node `json:"worker-nodes,omitempty"`
+	Message     string `json:"message,omitempty"`
 }
 
 type Node struct {

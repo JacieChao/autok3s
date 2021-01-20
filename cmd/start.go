@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/cnrancher/autok3s/cmd/common"
 	"github.com/cnrancher/autok3s/pkg/providers"
+	"github.com/cnrancher/autok3s/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +31,7 @@ func StartCommand() *cobra.Command {
 			stP = reg
 		}
 
-		startCmd.Flags().AddFlagSet(stP.GetCredentialFlags(startCmd))
+		startCmd.Flags().AddFlagSet(utils.ConvertFlags(startCmd, stP.GetCredentialFlags()))
 		startCmd.Flags().AddFlagSet(stP.GetStartFlags(startCmd))
 		startCmd.Example = stP.GetUsageExample("start")
 	}

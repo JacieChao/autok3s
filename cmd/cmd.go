@@ -9,6 +9,7 @@ import (
 
 	// import custom provider
 	_ "github.com/cnrancher/autok3s/pkg/providers/alibaba"
+	_ "github.com/cnrancher/autok3s/pkg/providers/amazone"
 	_ "github.com/cnrancher/autok3s/pkg/providers/native"
 	_ "github.com/cnrancher/autok3s/pkg/providers/tencent"
 
@@ -40,6 +41,7 @@ var (
 )
 
 func init() {
+	common.ClusterLogs = make(map[string]*common.LogWriter, 0)
 	cobra.OnInitialize(initCfg)
 	cmd.PersistentFlags().BoolVarP(&common.Debug, "debug", "d", common.Debug, "Enable log debug level")
 	cmd.Flags().StringVarP(&common.CfgPath, "cfg", "c", common.CfgPath, "Path to the cfg file to use for CLI requests")

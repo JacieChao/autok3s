@@ -34,7 +34,7 @@ func (p *Native) GetUsageExample(action string) string {
 	}
 }
 
-func (p *Native) GetCreateFlags(cmd *cobra.Command) *pflag.FlagSet {
+func (p *Native) GetCreateFlags() []types.Flag {
 	fs := p.sharedFlags()
 	fs = append(fs, []types.Flag{
 		{
@@ -51,7 +51,7 @@ func (p *Native) GetCreateFlags(cmd *cobra.Command) *pflag.FlagSet {
 		},
 	}...)
 
-	return utils.ConvertFlags(cmd, fs)
+	return fs
 }
 
 func (p *Native) GetJoinFlags(cmd *cobra.Command) *pflag.FlagSet {
@@ -75,8 +75,17 @@ func (p *Native) GetDeleteFlags(cmd *cobra.Command) *pflag.FlagSet {
 	return cmd.Flags()
 }
 
-func (p *Native) GetCredentialFlags(cmd *cobra.Command) *pflag.FlagSet {
-	return cmd.Flags()
+func (p *Native) GetCredentialFlags() []types.Flag {
+	return []types.Flag{}
+}
+
+func (p *Native) GetSSHConfig() *types.SSH {
+	ssh := &types.SSH{
+		User:       defaultUser,
+		Port:       "22",
+		SSHKeyPath: defaultSSHKeyPath,
+	}
+	return ssh
 }
 
 func (p *Native) BindCredentialFlags() *pflag.FlagSet {
@@ -91,11 +100,12 @@ func (p *Native) MergeClusterOptions() error {
 func (p *Native) sharedFlags() []types.Flag {
 	fs := []types.Flag{
 		{
-			Name:     "name",
-			P:        &p.Name,
-			V:        p.Name,
-			Usage:    "Set the name of the kubeconfig context",
-			Required: true,
+			Name:      "name",
+			P:         &p.Name,
+			V:         p.Name,
+			ShortHand: "n",
+			Usage:     "Set the name of the kubeconfig context",
+			Required:  true,
 		},
 		{
 			Name:  "ip",
