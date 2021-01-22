@@ -2,7 +2,6 @@ package alibaba
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -129,8 +128,9 @@ func (p *Alibaba) GetProviderName() string {
 	return p.Provider
 }
 
-func (p *Alibaba) GenerateClusterName() {
+func (p *Alibaba) GenerateClusterName() string {
 	p.Name = fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
+	return p.Name
 }
 
 func (p *Alibaba) CreateK3sCluster(ssh *types.SSH) (err error) {
@@ -159,55 +159,55 @@ func (p *Alibaba) CreateK3sCluster(ssh *types.SSH) (err error) {
 		}
 	}()
 
-	c, err := p.generateInstance(p.createCheck, ssh)
-	if err != nil {
-		return
-	}
-
-	// initialize K3s cluster.
-	if err = cluster.InitK3sCluster(c); err != nil {
-		return
-	}
-	p.logger.Infof("[%s] successfully executed create logic\n", p.GetProviderName())
-
-	if option, ok := c.Options.(alibaba.Options); ok {
-		extraManifests := make([]string, 0)
-		if strings.EqualFold(option.Terway.Mode, "eni") {
-			// deploy additional Terway manifests.
-			terway := &alibaba.Terway{
-				Mode:          option.Terway.Mode,
-				AccessKey:     option.AccessKey,
-				AccessSecret:  option.AccessSecret,
-				CIDR:          option.Terway.CIDR,
-				SecurityGroup: option.SecurityGroup,
-				VSwitches:     fmt.Sprintf(`{"%s":["%s"]}`, option.Region, option.VSwitch),
-				MaxPoolSize:   option.Terway.MaxPoolSize,
-			}
-			tmpl := fmt.Sprintf(terwayTmpl, terway.AccessKey, terway.AccessSecret, terway.SecurityGroup, terway.CIDR,
-				terway.VSwitches, terway.MaxPoolSize)
-			extraManifests = append(extraManifests, fmt.Sprintf(deployTerwayCommand,
-				base64.StdEncoding.EncodeToString([]byte(tmpl)), common.K3sManifestsDir))
-		}
-		if c.CloudControllerManager {
-			// deploy additional Alibaba cloud-controller-manager manifests.
-			aliCCM := &alibaba.CloudControllerManager{
-				Region:       option.Region,
-				AccessKey:    option.AccessKey,
-				AccessSecret: option.AccessSecret,
-			}
-			if c.ClusterCIDR == "" {
-				c.ClusterCIDR = defaultCidr
-			}
-			tmpl := fmt.Sprintf(alibabaCCMTmpl, aliCCM.AccessKey, aliCCM.AccessSecret, c.ClusterCIDR, aliCCM.Region)
-			extraManifests = append(extraManifests, fmt.Sprintf(deployCCMCommand,
-				base64.StdEncoding.EncodeToString([]byte(tmpl)), common.K3sManifestsDir))
-		}
-		p.logger.Infof("[%s] start deploy Alibaba additional manifests\n", p.GetProviderName())
-		if err := cluster.DeployExtraManifest(c, extraManifests); err != nil {
-			return err
-		}
-		p.logger.Infof("[%s] successfully deploy Alibaba additional manifests\n", p.GetProviderName())
-	}
+	//c, err := p.generateInstance(ssh)
+	//if err != nil {
+	//	return
+	//}
+	//
+	//// initialize K3s cluster.
+	//if err = cluster.InitK3sCluster(c); err != nil {
+	//	return
+	//}
+	//p.logger.Infof("[%s] successfully executed create logic\n", p.GetProviderName())
+	//
+	//if option, ok := c.Options.(alibaba.Options); ok {
+	//	extraManifests := make([]string, 0)
+	//	if strings.EqualFold(option.Terway.Mode, "eni") {
+	//		// deploy additional Terway manifests.
+	//		terway := &alibaba.Terway{
+	//			Mode:          option.Terway.Mode,
+	//			AccessKey:     option.AccessKey,
+	//			AccessSecret:  option.AccessSecret,
+	//			CIDR:          option.Terway.CIDR,
+	//			SecurityGroup: option.SecurityGroup,
+	//			VSwitches:     fmt.Sprintf(`{"%s":["%s"]}`, option.Region, option.VSwitch),
+	//			MaxPoolSize:   option.Terway.MaxPoolSize,
+	//		}
+	//		tmpl := fmt.Sprintf(terwayTmpl, terway.AccessKey, terway.AccessSecret, terway.SecurityGroup, terway.CIDR,
+	//			terway.VSwitches, terway.MaxPoolSize)
+	//		extraManifests = append(extraManifests, fmt.Sprintf(deployTerwayCommand,
+	//			base64.StdEncoding.EncodeToString([]byte(tmpl)), common.K3sManifestsDir))
+	//	}
+	//	if c.CloudControllerManager {
+	//		// deploy additional Alibaba cloud-controller-manager manifests.
+	//		aliCCM := &alibaba.CloudControllerManager{
+	//			Region:       option.Region,
+	//			AccessKey:    option.AccessKey,
+	//			AccessSecret: option.AccessSecret,
+	//		}
+	//		if c.ClusterCIDR == "" {
+	//			c.ClusterCIDR = defaultCidr
+	//		}
+	//		tmpl := fmt.Sprintf(alibabaCCMTmpl, aliCCM.AccessKey, aliCCM.AccessSecret, c.ClusterCIDR, aliCCM.Region)
+	//		extraManifests = append(extraManifests, fmt.Sprintf(deployCCMCommand,
+	//			base64.StdEncoding.EncodeToString([]byte(tmpl)), common.K3sManifestsDir))
+	//	}
+	//	p.logger.Infof("[%s] start deploy Alibaba additional manifests\n", p.GetProviderName())
+	//	if err := cluster.DeployExtraManifest(c, extraManifests); err != nil {
+	//		return err
+	//	}
+	//	p.logger.Infof("[%s] successfully deploy Alibaba additional manifests\n", p.GetProviderName())
+	//}
 
 	return
 }
@@ -219,36 +219,36 @@ func (p *Alibaba) JoinK3sNode(ssh *types.SSH) error {
 		ssh.User = defaultUser
 	}
 
-	merged, err := p.generateInstance(p.joinCheck, ssh)
-	if err != nil {
-		return err
-	}
-
-	added := &types.Cluster{
-		Metadata: merged.Metadata,
-		Options:  merged.Options,
-		Status:   types.Status{},
-	}
-
-	p.m.Range(func(key, value interface{}) bool {
-		v := value.(types.Node)
-		// filter the number of nodes that are not generated by current command.
-		if v.Current {
-			if v.Master {
-				added.Status.MasterNodes = append(added.Status.MasterNodes, v)
-			} else {
-				added.Status.WorkerNodes = append(added.Status.WorkerNodes, v)
-			}
-		}
-		return true
-	})
-
-	// join K3s node.
-	if err := cluster.JoinK3sNode(merged, added); err != nil {
-		return err
-	}
-
-	p.logger.Infof("[%s] successfully executed join logic\n", p.GetProviderName())
+	//merged, err := p.generateInstance(ssh)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//added := &types.Cluster{
+	//	Metadata: merged.Metadata,
+	//	Options:  merged.Options,
+	//	Status:   types.Status{},
+	//}
+	//
+	//p.m.Range(func(key, value interface{}) bool {
+	//	v := value.(types.Node)
+	//	// filter the number of nodes that are not generated by current command.
+	//	if v.Current {
+	//		if v.Master {
+	//			added.Status.MasterNodes = append(added.Status.MasterNodes, v)
+	//		} else {
+	//			added.Status.WorkerNodes = append(added.Status.WorkerNodes, v)
+	//		}
+	//	}
+	//	return true
+	//})
+	//
+	//// join K3s node.
+	//if err := cluster.JoinK3sNode(merged, added); err != nil {
+	//	return err
+	//}
+	//
+	//p.logger.Infof("[%s] successfully executed join logic\n", p.GetProviderName())
 
 	return nil
 }
@@ -981,7 +981,7 @@ func (p *Alibaba) getVpcCIDR() (string, error) {
 	return response.Vpcs.Vpc[0].CidrBlock, nil
 }
 
-func (p *Alibaba) createCheck() error {
+func (p *Alibaba) CreateCheck(ssh *types.SSH) error {
 	masterNum, err := strconv.Atoi(p.Master)
 	if masterNum < 1 || err != nil {
 		return fmt.Errorf("[%s] calling preflight error: `--master` number must >= 1",
@@ -1349,16 +1349,12 @@ func (p *Alibaba) tagVpcResources(resourceType string, resourceIds []string, tag
 	return nil
 }
 
-func (p *Alibaba) generateInstance(fn checkFun, ssh *types.SSH) (*types.Cluster, error) {
+func (p *Alibaba) PrepareCluster(ssh *types.SSH) (*types.Cluster, error) {
 	var (
 		err error
 	)
 
 	if err = p.generateClientSDK(); err != nil {
-		return nil, err
-	}
-
-	if err = fn(); err != nil {
 		return nil, err
 	}
 

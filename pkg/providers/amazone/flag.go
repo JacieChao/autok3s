@@ -29,23 +29,8 @@ func (p *Amazone) GetUsageExample(action string) string {
 	}
 }
 
-func (p *Amazone) GetCreateFlags() []types.Flag {
-	fs := p.sharedFlags()
-	fs = append(fs, []types.Flag{
-		{
-			Name:  "ui",
-			P:     &p.UI,
-			V:     p.UI,
-			Usage: "Enable K3s UI.",
-		},
-		{
-			Name:  "cluster",
-			P:     &p.Cluster,
-			V:     p.Cluster,
-			Usage: "Form k3s cluster using embedded etcd (requires K8s >= 1.19)",
-		},
-	}...)
-	return fs
+func (p *Amazone) GetOptionFlags() []types.Flag {
+	return p.sharedFlags()
 }
 
 func (p *Amazone) GetStartFlags(cmd *cobra.Command) *pflag.FlagSet {
@@ -226,14 +211,6 @@ func (p *Amazone) overwriteMetadata(matched *types.Cluster) {
 func (p *Amazone) sharedFlags() []types.Flag {
 	fs := []types.Flag{
 		{
-			Name:      "name",
-			P:         &p.Name,
-			V:         p.Name,
-			Usage:     "Set the name of the kubeconfig context",
-			ShortHand: "n",
-			Required:  true,
-		},
-		{
 			Name:   "region",
 			P:      &p.Region,
 			V:      p.Region,
@@ -246,13 +223,6 @@ func (p *Amazone) sharedFlags() []types.Flag {
 			V:      p.Zone,
 			Usage:  "Zone is physical areas with independent power grids and networks within one region. e.g.(a,b,c,d,e)",
 			EnvVar: "AWS_ZONE",
-		},
-		{
-			Name:   "endpoint",
-			P:      &p.Endpoint,
-			V:      p.Endpoint,
-			Usage:  "aws endpoint url",
-			EnvVar: "AWS_ENDPOINT",
 		},
 		{
 			Name:   "keypair-name",
@@ -302,66 +272,6 @@ func (p *Amazone) sharedFlags() []types.Flag {
 			V:      p.SecurityGroup,
 			Usage:  "Used to specify the security group used by the instance",
 			EnvVar: "AWS_SECURITY_GROUP",
-		},
-		{
-			Name:  "ip",
-			P:     &p.IP,
-			V:     p.IP,
-			Usage: "Public IP of an existing k3s server",
-		},
-		{
-			Name:  "k3s-version",
-			P:     &p.K3sVersion,
-			V:     p.K3sVersion,
-			Usage: "Used to specify the version of k3s cluster, overrides k3s-channel",
-		},
-		{
-			Name:  "k3s-channel",
-			P:     &p.K3sChannel,
-			V:     p.K3sChannel,
-			Usage: "Used to specify the release channel of k3s. e.g.(stable, latest, or i.e. v1.18)",
-		},
-		{
-			Name:  "k3s-install-script",
-			P:     &p.InstallScript,
-			V:     p.InstallScript,
-			Usage: "Change the default upstream k3s install script address",
-		},
-		{
-			Name:  "cloud-controller-manager",
-			P:     &p.CloudControllerManager,
-			V:     p.CloudControllerManager,
-			Usage: "Enable cloud-controller-manager component",
-		},
-		{
-			Name:  "master-extra-args",
-			P:     &p.MasterExtraArgs,
-			V:     p.MasterExtraArgs,
-			Usage: "Master extra arguments for k3s installer, wrapped in quotes. e.g.(--master-extra-args '--no-deploy metrics-server')",
-		},
-		{
-			Name:  "worker-extra-args",
-			P:     &p.WorkerExtraArgs,
-			V:     p.WorkerExtraArgs,
-			Usage: "Worker extra arguments for k3s installer, wrapped in quotes. e.g.(--worker-extra-args '--node-taint key=value:NoExecute')",
-		},
-		{
-			Name:  "registry",
-			P:     &p.Registry,
-			V:     p.Registry,
-			Usage: "K3s registry file, see: https://rancher.com/docs/k3s/latest/en/installation/private-registry",
-		},
-		{
-			Name:  "datastore",
-			P:     &p.DataStore,
-			V:     p.DataStore,
-			Usage: "K3s datastore, HA mode `create/join` master node needed this flag",
-		},
-		{
-			Name:  "token",
-			P:     &p.Token,
-			V:     p.Token,
-			Usage: "K3s master token, if empty will automatically generated",
 		},
 		{
 			Name:  "master",

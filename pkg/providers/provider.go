@@ -28,8 +28,8 @@ type Provider interface {
 	GetProviderName() string
 	// Get command usage example.
 	GetUsageExample(action string) string
-	// Create command flags.
-	GetCreateFlags() []types.Flag
+	// Create flags of provider options.
+	GetOptionFlags() []types.Flag
 	// Join command flags.
 	GetJoinFlags(cmd *cobra.Command) *pflag.FlagSet
 	// Stop command flags.
@@ -45,13 +45,13 @@ type Provider interface {
 	// Use this method to bind Viper, although it is somewhat repetitive.
 	BindCredentialFlags() *pflag.FlagSet
 	// Generate cluster name.
-	GenerateClusterName()
+	GenerateClusterName() string
 	// Generate create/join extra args for master nodes
 	GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string
 	// Generate create/join extra args for worker nodes
 	GenerateWorkerExtraArgs(cluster *types.Cluster, worker types.Node) string
 	// K3s create cluster interface.
-	CreateK3sCluster(ssh *types.SSH) error
+	//CreateK3sCluster(ssh *types.SSH) error
 	// K3s join node interface.
 	JoinK3sNode(ssh *types.SSH) error
 	// K3s delete cluster interface.
@@ -78,6 +78,8 @@ type Provider interface {
 	// set cluster configuration of provider
 	SetConfig(config []byte) error
 	GetSSHConfig() *types.SSH
+	CreateCheck(ssh *types.SSH) error
+	PrepareCluster(ssh *types.SSH) (*types.Cluster, error)
 }
 
 // RegisterProvider registers a provider.Factory by name.

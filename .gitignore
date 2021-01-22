@@ -28,3 +28,5 @@ main
 **/Dockerfile.dapper*
 !**/Dockerfile.dapper
 .autok3s/
+dist.zip
+dist/

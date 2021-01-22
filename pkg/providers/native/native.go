@@ -80,8 +80,9 @@ func (p *Native) GetProviderName() string {
 	return "native"
 }
 
-func (p *Native) GenerateClusterName() {
+func (p *Native) GenerateClusterName() string {
 	// no need to support.
+	return ""
 }
 
 func (p *Native) GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string {
@@ -135,6 +136,10 @@ func (p *Native) CreateK3sCluster(ssh *types.SSH) (err error) {
 	p.logger.Infof("[%s] successfully executed create logic\n", p.GetProviderName())
 
 	return
+}
+
+func (p *Native) PrepareCluster(ssh *types.SSH) (*types.Cluster, error) {
+	return &types.Cluster{}, nil
 }
 
 func (p *Native) JoinK3sNode(ssh *types.SSH) (err error) {
@@ -303,6 +308,10 @@ func (p *Native) SetConfig(config []byte) error {
 	targetOption := reflect.ValueOf(opt).Elem()
 	utils.MergeConfig(sourceOption, targetOption)
 
+	return nil
+}
+
+func (p *Native) CreateCheck(ssh *types.SSH) error {
 	return nil
 }
 

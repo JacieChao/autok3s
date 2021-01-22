@@ -17,6 +17,7 @@ func Start() http.Handler {
 	initProvider(s.Schemas)
 	initCluster(s.Schemas)
 	initCredential(s.Schemas)
+	initKubeconfig(s.Schemas)
 	apiroot.Register(s.Schemas, []string{"v1"})
 	router := mux.NewRouter()
 	router.UseEncodedPath()

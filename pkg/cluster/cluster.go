@@ -13,20 +13,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cnrancher/autok3s/pkg/types/amazone"
-
 	"github.com/cnrancher/autok3s/pkg/common"
 	"github.com/cnrancher/autok3s/pkg/hosts"
 	"github.com/cnrancher/autok3s/pkg/providers"
 	"github.com/cnrancher/autok3s/pkg/types"
 	"github.com/cnrancher/autok3s/pkg/types/alibaba"
+	"github.com/cnrancher/autok3s/pkg/types/amazone"
 	"github.com/cnrancher/autok3s/pkg/types/tencent"
 	"github.com/cnrancher/autok3s/pkg/utils"
-
 	"github.com/ghodss/yaml"
 	"github.com/rancher/k3s/pkg/agent/templates"
 	"github.com/sirupsen/logrus"
 	yamlv3 "gopkg.in/yaml.v3"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -431,6 +430,7 @@ func AppendToState(cluster *types.Cluster) ([]types.Cluster, error) {
 		}
 	}
 
+	logrus.Infof("-------- get index for append %d", index)
 	if index > -1 {
 		converts[index] = *cluster
 	} else {
@@ -441,17 +441,18 @@ func AppendToState(cluster *types.Cluster) ([]types.Cluster, error) {
 }
 
 func DeleteState(name string, provider string) error {
-	r, err := deleteClusterFromState(name, provider)
-	if err != nil {
-		return err
-	}
-
 	v := common.CfgPath
 	if v == "" {
 		return errors.New("[cluster] cfg path is empty")
 	}
 
+	r, err := deleteClusterFromState(name, provider)
+	if err != nil {
+		return err
+	}
 	return utils.WriteYaml(r, v, common.StateFile)
+
+	return nil
 }
 
 func UninstallK3sNodes(nodes []types.Node) (warnMsg []string) {
@@ -489,25 +490,16 @@ func ConvertToClusters(origin []interface{}) ([]types.Cluster, error) {
 }
 
 func SaveState(cluster *types.Cluster) error {
+	v := common.CfgPath
+	if v == "" {
+		return errors.New("[cluster] cfg path is empty")
+	}
 	r, err := AppendToState(cluster)
 	if err != nil {
 		return err
 	}
 
-	v := common.CfgPath
-	if v == "" {
-		return errors.New("[cluster] cfg path is empty")
-	}
-
-	return utils.WriteYaml(r, v, common.StateFile)
-}
-
-func FilterState(r []*types.Cluster) error {
-	v := common.CfgPath
-	if v == "" {
-		return errors.New("[cluster] cfg path is empty")
-	}
-
+	logrus.Infof("====== get cluster before save %++v", r)
 	return utils.WriteYaml(r, v, common.StateFile)
 }
 

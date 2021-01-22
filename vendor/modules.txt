@@ -81,6 +81,8 @@ github.com/chai2010/gettext-go/gettext/po
 github.com/coreos/go-systemd/journal
 # github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 github.com/coreos/pkg/capnslog
+# github.com/creack/pty v1.1.7
+github.com/creack/pty
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/daviddengcn/go-colortext v0.0.0-20160507010035-511bcaf42ccd
@@ -166,6 +168,8 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
+# github.com/iamacarpet/go-winpty v1.0.2
+github.com/iamacarpet/go-winpty
 # github.com/imdario/mergo v0.3.7
 github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0

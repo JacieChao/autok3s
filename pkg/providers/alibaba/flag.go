@@ -77,7 +77,7 @@ func (p *Alibaba) GetUsageExample(action string) string {
 	}
 }
 
-func (p *Alibaba) GetCreateFlags() []types.Flag {
+func (p *Alibaba) GetOptionFlags() []types.Flag {
 	fs := p.sharedFlags()
 	fs = append(fs, []types.Flag{
 		{

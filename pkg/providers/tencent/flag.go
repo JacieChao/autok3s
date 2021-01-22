@@ -76,7 +76,7 @@ func (p *Tencent) GetUsageExample(action string) string {
 	}
 }
 
-func (p *Tencent) GetCreateFlags() []types.Flag {
+func (p *Tencent) GetOptionFlags() []types.Flag {
 	fs := p.sharedFlags()
 	fs = append(fs, []types.Flag{
 		{

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/cnrancher/autok3s/cmd/common"
-	"github.com/cnrancher/autok3s/pkg/providers"
+	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/types"
 	"github.com/cnrancher/autok3s/pkg/utils"
 
@@ -11,66 +11,67 @@ import (
 )
 
 var (
+	example = `  autok3s -d create \
+    --provider amazone \
+    --name <cluster name> \
+    --access-key <access-key> \
+    --secret-key <access-secret> \
+    --master 1
+`
 	createCmd = &cobra.Command{
-		Use:   "create",
-		Short: "Create k3s cluster",
+		Use:     "create",
+		Short:   "Create k3s cluster",
+		Example: example,
 	}
 
-	cProvider = ""
-	cp        providers.Provider
+	//cp        providers.Provider
+	//cProvider string
 
 	cSSH = &types.SSH{
 		Port: "22",
 	}
 )
 
-func init() {
-	createCmd.Flags().StringVarP(&cProvider, "provider", "p", cProvider, "Provider is a module which provides an interface for managing cloud resources")
-}
-
 func CreateCommand() *cobra.Command {
+	b := cluster.NewBaseProvider()
+	createCmd.Flags().AddFlagSet(utils.ConvertFlags(createCmd, common.GetClusterOptions(b.Metadata)))
+	createCmd.Flags().AddFlagSet(utils.ConvertFlags(createCmd, common.GetSSHConfig(cSSH)))
+
 	// load dynamic provider flags.
-	pStr := common.FlagHackLookup("--provider")
-	if pStr != "" {
-		if reg, err := providers.GetProvider(pStr); err != nil {
+	cProvider := common.FlagHackLookup("--provider")
+	if cProvider != "" {
+		err := b.GenerateProvider(cProvider)
+		if err != nil {
 			logrus.Fatalln(err)
-		} else {
-			cp = reg
 		}
 
-		cSSH = cp.GetSSHConfig()
-		createCmd.Flags().StringVar(&cSSH.User, "ssh-user", cSSH.User, "SSH user for host")
-		createCmd.Flags().StringVar(&cSSH.Port, "ssh-port", cSSH.Port, "SSH port for host")
-		createCmd.Flags().StringVar(&cSSH.SSHKeyPath, "ssh-key-path", cSSH.SSHKeyPath, "SSH private key path")
-		createCmd.Flags().StringVar(&cSSH.SSHKeyPassphrase, "ssh-key-pass", cSSH.SSHKeyPassphrase, "SSH passphrase of private key")
-		createCmd.Flags().StringVar(&cSSH.SSHCertPath, "ssh-key-cert-path", cSSH.SSHCertPath, "SSH private key certificate path")
-		createCmd.Flags().StringVar(&cSSH.Password, "ssh-password", cSSH.Password, "SSH login password")
-		createCmd.Flags().BoolVar(&cSSH.SSHAgentAuth, "ssh-agent", cSSH.SSHAgentAuth, "Enable ssh agent")
-
-		createCmd.Flags().AddFlagSet(utils.ConvertFlags(createCmd, cp.GetCredentialFlags()))
-		createCmd.Flags().AddFlagSet(utils.ConvertFlags(createCmd, cp.GetCreateFlags()))
-		createCmd.Example = cp.GetUsageExample("create")
+		cSSH = b.GetSSHConfig()
+		createCmd.Flags().AddFlagSet(utils.ConvertFlags(createCmd, b.GenerateProviderFlags()))
+		createCmd.Example = b.GetUsageExample("create")
 	}
 
 	createCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		if cProvider == "" {
-			logrus.Fatalln("required flags(s) \"[provider]\" not set")
+			logrus.Fatalln("required flags(s) \"--provider\" not set")
 		}
-		common.InitPFlags(cmd, cp)
-		return common.MakeSureCredentialFlag(cmd.Flags(), cp)
+		common.InitPFlags(cmd, b)
+		return common.MakeSureCredentialFlag(cmd.Flags(), b)
 	}
 
 	createCmd.Run = func(cmd *cobra.Command, args []string) {
 		// generate cluster name. e.g. input: "--name k3s1 --region cn-hangzhou" output: "k3s1.cn-hangzhou.<provider>"
-		cp.GenerateClusterName()
+		//cp.GenerateClusterName()
+		if err := b.CreateCheck(cSSH); err != nil {
+			logrus.Fatalln(err)
+		}
 
 		// create k3s cluster with generated cluster name.
-		if err := cp.CreateK3sCluster(cSSH); err != nil {
-			logrus.Errorln(err)
-			if rErr := cp.Rollback(); rErr != nil {
-				logrus.Fatalln(rErr)
-			}
-		}
+		//if err := cp.CreateK3sCluster(cSSH); err != nil {
+		//	logrus.Errorln(err)
+		//	if rErr := cp.Rollback(); rErr != nil {
+		//		logrus.Fatalln(rErr)
+		//	}
+		//}
 	}
 
 	return createCmd

@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/cnrancher/autok3s/pkg/providers"
+
 	com "github.com/cnrancher/autok3s/cmd/common"
 	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/common"
-	autok3stypes "github.com/cnrancher/autok3s/pkg/types"
 	"github.com/cnrancher/autok3s/pkg/types/apis"
 	"github.com/cnrancher/autok3s/pkg/utils"
 	"github.com/gorilla/mux"
@@ -54,27 +55,40 @@ func joinHandler() http.Handler {
 			rw.Write([]byte("clusterID cannot be empty"))
 			return
 		}
-		c := &autok3stypes.Cluster{}
+		content := strings.Split(clusterID, ".")
+		providerName := content[len(content)-1]
+		provider, err := providers.GetProvider(providerName)
+		if err != nil {
+			rw.WriteHeader(http.StatusNotFound)
+			rw.Write([]byte(fmt.Sprintf("provider %s is not found", providerName)))
+		}
+		//c := &autok3stypes.Cluster{}
 		body, err := ioutil.ReadAll(req.Body)
-		if err != nil {
-			rw.WriteHeader(http.StatusInternalServerError)
-			rw.Write([]byte(err.Error()))
-			return
-		}
-		err = json.Unmarshal(body, c)
-		if err != nil {
-			rw.WriteHeader(http.StatusInternalServerError)
-			rw.Write([]byte(err.Error()))
-			return
-		}
-		provider, err := com.GetProviderByState(*c)
-		if err != nil {
-			rw.WriteHeader(http.StatusInternalServerError)
-			rw.Write([]byte(err.Error()))
-			return
-		}
+		//if err != nil {
+		//	rw.WriteHeader(http.StatusInternalServerError)
+		//	rw.Write([]byte(err.Error()))
+		//	return
+		//}
+		//err = json.Unmarshal(body, c)
+		//if err != nil {
+		//	rw.WriteHeader(http.StatusInternalServerError)
+		//	rw.Write([]byte(err.Error()))
+		//	return
+		//}
+		//provider, err := com.GetProviderByState(*c)
+		//if err != nil {
+		//	rw.WriteHeader(http.StatusInternalServerError)
+		//	rw.Write([]byte(err.Error()))
+		//	return
+		//}
 		apiCluster := &apis.Cluster{}
 		err = json.Unmarshal(body, apiCluster)
+		if err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			rw.Write([]byte(err.Error()))
+			return
+		}
+		err = provider.SetConfig(body)
 		if err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
 			rw.Write([]byte(err.Error()))

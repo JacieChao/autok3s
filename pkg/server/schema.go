@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 
+	"github.com/cnrancher/autok3s/pkg/server/store/kubectl"
+
 	"github.com/cnrancher/autok3s/pkg/server/store/cluster"
 	"github.com/cnrancher/autok3s/pkg/server/store/credential"
 	"github.com/cnrancher/autok3s/pkg/server/store/provider"
@@ -48,5 +50,15 @@ func initMutual(s *types.APISchemas) {
 		schema.ResourceMethods = []string{}
 		schema.ListHandler = websocket.Handler
 		schema.PluralName = "mutual"
+	})
+}
+
+func initKubeconfig(s *types.APISchemas) {
+	s.MustImportAndCustomize(autok3stypes.Config{}, func(schema *types.APISchema) {
+		schema.Store = &kubectl.Store{}
+		schema.CollectionMethods = []string{http.MethodGet}
+		schema.ResourceMethods = []string{http.MethodGet}
+		schema.ByIDHandler = websocket.KubeHandler
+		schema.PluralName = "config"
 	})
 }

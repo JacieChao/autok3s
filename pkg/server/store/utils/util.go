@@ -27,7 +27,7 @@ func GetCredentialByProvider(p providers.Provider) (map[string]schemas.Field, er
 			value = viper.GetString(fmt.Sprintf(common.BindPrefix, p.GetProviderName(), flag.Name))
 		}
 		result[flag.Name] = schemas.Field{
-			Type:        reflect.TypeOf(flag.V).Kind().String(),
+			Type:        "password",
 			Description: flag.Usage,
 			Required:    flag.Required,
 			Default:     value,

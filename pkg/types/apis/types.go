@@ -24,6 +24,8 @@ type Credential struct {
 }
 
 type Mutual struct {
-	Stop bool   `json:"stop,omitempty"`
-	ID   string `json:"id,omitempty"`
+}
+
+type Config struct {
+	Context string `json:"context"`
 }

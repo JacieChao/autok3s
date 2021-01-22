@@ -34,7 +34,7 @@ func (p *Native) GetUsageExample(action string) string {
 	}
 }
 
-func (p *Native) GetCreateFlags() []types.Flag {
+func (p *Native) GetOptionFlags() []types.Flag {
 	fs := p.sharedFlags()
 	fs = append(fs, []types.Flag{
 		{

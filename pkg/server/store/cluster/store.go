@@ -64,14 +64,14 @@ func (c *Store) Create(apiOp *types.APIRequest, schema *types.APISchema, data ty
 		}
 	}
 
-	go func() {
-		err = p.CreateK3sCluster(&config.SSH)
-		if err != nil {
-			logrus.Errorf("create cluster error: %v", err)
-			err = p.Rollback()
-			logrus.Errorf("rollback cluster error: %v", err)
-		}
-	}()
+	//go func() {
+	//	err = p.CreateK3sCluster(&config.SSH)
+	//	if err != nil {
+	//		logrus.Errorf("create cluster error: %v", err)
+	//		err = p.Rollback()
+	//		logrus.Errorf("rollback cluster error: %v", err)
+	//	}
+	//}()
 
 	return types.APIObject{}, err
 }
@@ -115,6 +115,9 @@ func (c *Store) List(apiOp *types.APIRequest, schema *types.APISchema) (types.AP
 			if err := cluster.OverwriteCfg(r.Name); err != nil {
 				logrus.Errorf("failed to remove unexist cluster %s from kube config", r.Name)
 			}
+			if err := cluster.DeleteState(r.Name, r.Provider); err != nil {
+				logrus.Errorf("failed to remove unexist cluster %s from state: %v", r.Name, err)
+			}
 			continue
 		}
 		config := p.GetCluster(kubeCfg)
@@ -131,10 +134,6 @@ func (c *Store) List(apiOp *types.APIRequest, schema *types.APISchema) (types.AP
 			Options:  r.Options,
 			Status:   r.Status,
 		})
-	}
-	// remove useless clusters from .state.
-	if err := cluster.FilterState(clusterList); err != nil {
-		return list, fmt.Errorf("failed to remove useless clusters\n")
 	}
 	return list, nil
 }
@@ -158,10 +157,15 @@ func (c *Store) ByID(apiOp *types.APIRequest, schema *types.APISchema, id string
 	}
 	for _, con := range converts {
 		if con.Provider == providerName && con.Name == id {
+			obj := apis.Cluster{
+				Metadata: con.Metadata,
+				Options:  con.Options,
+				SSH:      con.Status.MasterNodes[0].SSH,
+			}
 			return types.APIObject{
 				Type:   schema.ID,
 				ID:     id,
-				Object: con,
+				Object: obj,
 			}, nil
 		}
 	}

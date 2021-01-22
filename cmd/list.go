@@ -79,6 +79,9 @@ func listCluster() {
 			if err := cluster.OverwriteCfg(r.Name); err != nil {
 				logrus.Errorf("failed to remove unexist cluster %s from kube config", r.Name)
 			}
+			if err := cluster.DeleteState(r.Name, r.Provider); err != nil {
+				logrus.Errorf("failed to remove unexist cluster %s from state: %v", r.Name, err)
+			}
 			continue
 		}
 
@@ -91,9 +94,9 @@ func listCluster() {
 	}
 
 	// remove useless clusters from .state.
-	if err := cluster.FilterState(clusterList); err != nil {
-		logrus.Errorf("failed to remove useless clusters\n")
-	}
+	//if err := cluster.FilterState(clusterList); err != nil {
+	//	logrus.Errorf("failed to remove useless clusters\n")
+	//}
 
 	for _, f := range filters {
 		context := strings.Split(f.Name, ".")

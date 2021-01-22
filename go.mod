@@ -36,10 +36,12 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.381
 	github.com/aws/aws-sdk-go v1.28.2
 	github.com/briandowns/spinner v1.11.1
+	github.com/creack/pty v1.1.7
 	github.com/docker/docker v17.12.0-ce-rc1.0.20200821074627-7ae5222c72cc+incompatible
 	github.com/ghodss/yaml v1.0.0
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.1
+	github.com/iamacarpet/go-winpty v1.0.2
 	github.com/morikuni/aec v1.0.0
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/onsi/ginkgo v1.14.0
