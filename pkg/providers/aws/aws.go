@@ -764,6 +764,7 @@ func (p *Amazon) runInstances(num int, master bool) error {
 			return fmt.Errorf("[%s] failed request spot instance: %v", p.GetProviderName(), err)
 		}
 		for _, spotRequest := range spotInstanceRequest.SpotInstanceRequests {
+			// TODO if full filled error, need to cancel spot request
 			requestID := spotRequest.SpotInstanceRequestId
 			p.logger.Debugf("[%s] waiting for spot instance full filled", p.GetProviderName())
 			err = utils.WaitFor(func() (bool, error) {
