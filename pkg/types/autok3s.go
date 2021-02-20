@@ -1,9 +1,19 @@
 package types
 
-import "github.com/sirupsen/logrus"
+import (
+	"github.com/sirupsen/logrus"
+)
 
 type AutoK3s struct {
 	Clusters []Cluster `json:"clusters" yaml:"clusters"`
+}
+
+type ClusterState struct {
+	Metadata    `json:",inline" mapstructure:",squash" gorm:"embedded"`
+	Options     []byte `json:"options,omitempty" gorm:"type:bytes"`
+	Status      string `json:"status" yaml:"status"`
+	MasterNodes []byte `json:"master-nodes,omitempty" gorm:"type:bytes"`
+	WorkerNodes []byte `json:"worker-nodes,omitempty" gorm:"type:bytes"`
 }
 
 type Cluster struct {
@@ -11,18 +21,17 @@ type Cluster struct {
 	Options  interface{} `json:"options,omitempty"`
 	SSH      `json:",inline"`
 
-	Status `json:"status" yaml:"status"`
-	Logger *logrus.Logger `json:"-" yaml:"-"`
+	Status      `json:"status" yaml:"status"`
+	Logger      *logrus.Logger `json:"-" yaml:"-"`
+	ContextName string         `json:"-" yaml:"-"`
 }
 
 type Metadata struct {
 	Name                   string `json:"name" yaml:"name"`
 	Provider               string `json:"provider" yaml:"provider"`
-	Master                 string `json:"master" yaml:"master"`
-	Worker                 string `json:"worker" yaml:"worker"`
 	Token                  string `json:"token,omitempty" yaml:"token,omitempty"`
 	IP                     string `json:"ip,omitempty" yaml:"ip,omitempty"`
-	ClusterCIDR            string `json:"cluster-cidr,omitempty" yaml:"cluster-cidr,omitempty"`
+	ClusterCidr            string `json:"cluster-cidr,omitempty" yaml:"cluster-cidr,omitempty"`
 	MasterExtraArgs        string `json:"master-extra-args,omitempty" yaml:"master-extra-args,omitempty"`
 	WorkerExtraArgs        string `json:"worker-extra-args,omitempty" yaml:"worker-extra-args,omitempty"`
 	Registry               string `json:"registry,omitempty" yaml:"registry,omitempty"`

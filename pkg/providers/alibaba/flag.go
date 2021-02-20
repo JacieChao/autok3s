@@ -231,7 +231,7 @@ func (p *Alibaba) overwriteMetadata(matched *types.Cluster) {
 	p.IP = matched.IP
 	p.UI = matched.UI
 	p.CloudControllerManager = matched.CloudControllerManager
-	p.ClusterCIDR = matched.ClusterCIDR
+	p.ClusterCidr = matched.ClusterCidr
 	p.DataStore = matched.DataStore
 	p.Mirror = matched.Mirror
 	p.DockerMirror = matched.DockerMirror

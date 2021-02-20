@@ -22,6 +22,8 @@ type Options struct {
 	SecurityGroup           string `json:"security-group,omitempty" yaml:"security-group,omitempty"`
 	InternetMaxBandwidthOut string `json:"internet-max-bandwidth-out,omitempty" yaml:"internet-max-bandwidth-out,omitempty"`
 	EIP                     bool   `json:"eip,omitempty" yaml:"eip,omitempty"`
+	Master                  string `json:"master" yaml:"master"`
+	Worker                  string `json:"worker" yaml:"worker"`
 }
 
 type Terway struct {

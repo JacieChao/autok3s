@@ -5,15 +5,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cnrancher/autok3s/pkg/cluster"
+
 	"github.com/cnrancher/autok3s/pkg/common"
 	"github.com/cnrancher/autok3s/pkg/providers"
-	"github.com/cnrancher/autok3s/pkg/providers/alibaba"
 	"github.com/cnrancher/autok3s/pkg/providers/aws"
-	"github.com/cnrancher/autok3s/pkg/providers/tencent"
 	"github.com/cnrancher/autok3s/pkg/types"
-	typesAli "github.com/cnrancher/autok3s/pkg/types/alibaba"
 	typesaws "github.com/cnrancher/autok3s/pkg/types/aws"
-	typesTencent "github.com/cnrancher/autok3s/pkg/types/tencent"
 	"github.com/cnrancher/autok3s/pkg/utils"
 
 	"github.com/ghodss/yaml"
@@ -23,7 +21,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func bindPFlags(cmd *cobra.Command, p providers.Provider) {
+func bindPFlags(cmd *cobra.Command, p *cluster.ProviderBase) {
 	name, err := cmd.Flags().GetString("provider")
 	if err != nil {
 		logrus.Fatalln(err)
@@ -38,7 +36,7 @@ func bindPFlags(cmd *cobra.Command, p providers.Provider) {
 	})
 }
 
-func InitPFlags(cmd *cobra.Command, p providers.Provider) {
+func InitPFlags(cmd *cobra.Command, p *cluster.ProviderBase) {
 	// bind env to flags
 	bindEnvFlags(cmd)
 	bindPFlags(cmd, p)
@@ -102,7 +100,7 @@ func IsCredentialFlag(s string, nfs *pflag.FlagSet) bool {
 	return found
 }
 
-func MakeSureCredentialFlag(flags *pflag.FlagSet, p providers.Provider) error {
+func MakeSureCredentialFlag(flags *pflag.FlagSet, p *cluster.ProviderBase) error {
 	flags.VisitAll(func(flag *pflag.Flag) {
 		// if viper has set the value, make sure flag has the value set to pass require check
 		if IsCredentialFlag(flag.Name, p.BindCredentialFlags()) && viper.IsSet(fmt.Sprintf(common.BindPrefix, p.GetProviderName(), flag.Name)) {
@@ -119,26 +117,26 @@ func GetProviderByState(c types.Cluster) (providers.Provider, error) {
 		return nil, err
 	}
 	switch c.Provider {
-	case "alibaba":
-		option := &typesAli.Options{}
-		if err := yaml.Unmarshal(b, option); err != nil {
-			return nil, err
-		}
-		return &alibaba.Alibaba{
-			Metadata: c.Metadata,
-			Options:  *option,
-			Status:   c.Status,
-		}, nil
-	case "tencent":
-		option := &typesTencent.Options{}
-		if err := yaml.Unmarshal(b, option); err != nil {
-			return nil, err
-		}
-		return &tencent.Tencent{
-			Metadata: c.Metadata,
-			Options:  *option,
-			Status:   c.Status,
-		}, nil
+	//case "alibaba":
+	//	option := &typesAli.Options{}
+	//	if err := yaml.Unmarshal(b, option); err != nil {
+	//		return nil, err
+	//	}
+	//	return &alibaba.Alibaba{
+	//		Metadata: c.Metadata,
+	//		Options:  *option,
+	//		Status:   c.Status,
+	//	}, nil
+	//case "tencent":
+	//	option := &typesTencent.Options{}
+	//	if err := yaml.Unmarshal(b, option); err != nil {
+	//		return nil, err
+	//	}
+	//	return &tencent.Tencent{
+	//		Metadata: c.Metadata,
+	//		Options:  *option,
+	//		Status:   c.Status,
+	//	}, nil
 	case "aws":
 		option := &typesaws.Options{}
 		if err := yaml.Unmarshal(b, option); err != nil {

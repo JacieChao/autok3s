@@ -83,13 +83,13 @@ func joinHandler() http.Handler {
 			rw.Write([]byte(err.Error()))
 			return
 		}
-		err = provider.MergeClusterOptions()
-		if err != nil {
-			rw.WriteHeader(http.StatusInternalServerError)
-			rw.Write([]byte(err.Error()))
-			return
-		}
-		provider.GenerateClusterName()
+		//err = provider.MergeClusterOptions()
+		//if err != nil {
+		//	rw.WriteHeader(http.StatusInternalServerError)
+		//	rw.Write([]byte(err.Error()))
+		//	return
+		//}
+		//provider.GenerateClusterName()
 
 		go func() {
 			err := provider.JoinK3sNode(&apiCluster.SSH)

@@ -6,13 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/common"
-	"github.com/cnrancher/autok3s/pkg/providers"
 	putil "github.com/cnrancher/autok3s/pkg/providers/utils"
 	"github.com/cnrancher/autok3s/pkg/types"
 	"github.com/cnrancher/autok3s/pkg/types/native"
@@ -50,9 +48,9 @@ type Native struct {
 }
 
 func init() {
-	providers.RegisterProvider(ProviderName, func() (providers.Provider, error) {
-		return NewProvider(), nil
-	})
+	//providers.RegisterProvider(ProviderName, func() (providers.Provider, error) {
+	//	return NewProvider(), nil
+	//})
 }
 
 func NewProvider() *Native {
@@ -81,8 +79,9 @@ func (p *Native) GetProviderName() string {
 	return "native"
 }
 
-func (p *Native) GenerateClusterName() {
+func (p *Native) GenerateClusterName() string {
 	// no need to support.
+	return p.Name
 }
 
 func (p *Native) GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string {
@@ -391,14 +390,18 @@ func (p *Native) assembleNodeStatus(ssh *types.SSH) (*types.Cluster, error) {
 		return true
 	})
 
-	p.Master = strconv.Itoa(len(p.MasterNodes))
-	p.Worker = strconv.Itoa(len(p.WorkerNodes))
+	//p.Master = strconv.Itoa(len(p.MasterNodes))
+	//p.Worker = strconv.Itoa(len(p.WorkerNodes))
 
 	return &types.Cluster{
 		Metadata: p.Metadata,
 		Options:  p.Options,
 		Status:   p.Status,
 	}, nil
+}
+
+func (p *Native) GetOptions() interface{} {
+	return p.Options
 }
 
 func (p *Native) syncNodesMap(ipList []string, master bool, ssh *types.SSH) {

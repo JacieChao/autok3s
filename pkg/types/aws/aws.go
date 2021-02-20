@@ -17,4 +17,6 @@ type Options struct {
 	IamInstanceProfileForWorker  string `json:"iam-instance-profile-worker,omitempty" yaml:"iam-instance-profile-worker,omitempty"`
 	RequestSpotInstance          bool   `json:"request-spot-instance,omitempty" yaml:"request-spot-instance,omitempty"`
 	SpotPrice                    string `json:"spot-price,omitempty" yaml:"spot-price,omitempty"`
+	Master                       string `json:"master" yaml:"master"`
+	Worker                       string `json:"worker" yaml:"worker"`
 }

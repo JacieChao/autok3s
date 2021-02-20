@@ -32,6 +32,8 @@ type Options struct {
 	InternetMaxBandwidthOut string `json:"internet-max-bandwidth-out,omitempty" yaml:"internet-max-bandwidth-out,omitempty"`
 	PublicIPAssignedEIP     bool   `json:"public-ip-assigned-eip" yaml:"public-ip-assigned-eip"`
 	NetworkRouteTableName   string `json:"network-route-table-name,omitempty" yaml:"network-route-table-name,omitempty"`
+	Master                  string `json:"master" yaml:"master"`
+	Worker                  string `json:"worker" yaml:"worker"`
 }
 
 type CloudControllerManager struct {

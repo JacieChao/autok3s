@@ -1,13 +1,6 @@
 package aws
 
 import (
-	"encoding/json"
-	"fmt"
-	"reflect"
-
-	"github.com/cnrancher/autok3s/pkg/types/aws"
-
-	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/types"
 	"github.com/cnrancher/autok3s/pkg/utils"
 
@@ -62,7 +55,8 @@ func (p *Amazon) GetUsageExample(action string) string {
 }
 
 func (p *Amazon) GetOptionFlags() []types.Flag {
-	fs := p.sharedFlags()
+	fs := p.GetCredentialFlags()
+	fs = append(fs, p.sharedFlags()...)
 	fs = append(fs, []types.Flag{
 		{
 			Name:  "ui",
@@ -80,16 +74,8 @@ func (p *Amazon) GetOptionFlags() []types.Flag {
 	return fs
 }
 
-func (p *Amazon) GetDeleteFlags(cmd *cobra.Command) *pflag.FlagSet {
-	fs := []types.Flag{
-		{
-			Name:      "name",
-			P:         &p.Name,
-			V:         p.Name,
-			Usage:     "Set the name of the kubeconfig context",
-			ShortHand: "n",
-			Required:  true,
-		},
+func (p *Amazon) GetDeleteFlags() []types.Flag {
+	return []types.Flag{
 		{
 			Name:   "region",
 			P:      &p.Region,
@@ -98,8 +84,6 @@ func (p *Amazon) GetDeleteFlags(cmd *cobra.Command) *pflag.FlagSet {
 			EnvVar: "AWS_DEFAULT_REGION",
 		},
 	}
-
-	return utils.ConvertFlags(cmd, fs)
 }
 
 func (p *Amazon) GetJoinFlags(cmd *cobra.Command) *pflag.FlagSet {
@@ -167,86 +151,13 @@ func (p *Amazon) BindCredentialFlags() *pflag.FlagSet {
 	return nfs
 }
 
-func (p *Amazon) MergeClusterOptions() error {
-	clusters, err := cluster.ReadFromState(&types.Cluster{
-		Metadata: p.Metadata,
-		Options:  p.Options,
-	})
-	if err != nil {
-		return err
-	}
-
-	var matched *types.Cluster
-	for _, c := range clusters {
-		if c.Provider == p.Provider && c.Name == fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.Provider) {
-			matched = &c
-		}
-	}
-
-	if matched != nil {
-		p.overwriteMetadata(matched)
-		// delete command need merge status value.
-		source := reflect.ValueOf(&p.Options).Elem()
-		b, err := json.Marshal(matched.Options)
-		if err != nil {
-			return err
-		}
-		opt := &aws.Options{}
-		err = json.Unmarshal(b, opt)
-		if err != nil {
-			return err
-		}
-		target := reflect.ValueOf(opt).Elem()
-		utils.MergeConfig(source, target)
-	}
-
-	return nil
-}
-
-func (p *Amazon) overwriteMetadata(matched *types.Cluster) {
-	// doesn't need to be overwrite.
+func (p *Amazon) MergeClusterOptions(matched *types.Cluster) {
+	p.Metadata = matched.Metadata
 	p.Status = matched.Status
-	p.Token = matched.Token
-	p.IP = matched.IP
-	p.UI = matched.UI
-	p.CloudControllerManager = matched.CloudControllerManager
-	p.ClusterCIDR = matched.ClusterCIDR
-	p.DataStore = matched.DataStore
-	p.Mirror = matched.Mirror
-	p.DockerMirror = matched.DockerMirror
-	p.InstallScript = matched.InstallScript
-	p.Network = matched.Network
-	// needed to be overwrite.
-	if p.K3sChannel == "" {
-		p.K3sChannel = matched.K3sChannel
-	}
-	if p.K3sVersion == "" {
-		p.K3sVersion = matched.K3sVersion
-	}
-	if p.InstallScript == "" {
-		p.InstallScript = matched.InstallScript
-	}
-	if p.Registry == "" {
-		p.Registry = matched.Registry
-	}
-	if p.MasterExtraArgs == "" {
-		p.MasterExtraArgs = matched.MasterExtraArgs
-	}
-	if p.WorkerExtraArgs == "" {
-		p.WorkerExtraArgs = matched.WorkerExtraArgs
-	}
 }
 
 func (p *Amazon) sharedFlags() []types.Flag {
 	fs := []types.Flag{
-		{
-			Name:      "name",
-			P:         &p.Name,
-			V:         p.Name,
-			Usage:     "Set the name of the kubeconfig context",
-			ShortHand: "n",
-			Required:  true,
-		},
 		{
 			Name:   "region",
 			P:      &p.Region,
@@ -340,66 +251,6 @@ func (p *Amazon) sharedFlags() []types.Flag {
 			P:     &p.SpotPrice,
 			V:     p.SpotPrice,
 			Usage: "spot instance bid price (in dollar)",
-		},
-		{
-			Name:  "ip",
-			P:     &p.IP,
-			V:     p.IP,
-			Usage: "Public IP of an existing k3s server",
-		},
-		{
-			Name:  "k3s-version",
-			P:     &p.K3sVersion,
-			V:     p.K3sVersion,
-			Usage: "Used to specify the version of k3s cluster, overrides k3s-channel",
-		},
-		{
-			Name:  "k3s-channel",
-			P:     &p.K3sChannel,
-			V:     p.K3sChannel,
-			Usage: "Used to specify the release channel of k3s. e.g.(stable, latest, or i.e. v1.18)",
-		},
-		{
-			Name:  "k3s-install-script",
-			P:     &p.InstallScript,
-			V:     p.InstallScript,
-			Usage: "Change the default upstream k3s install script address",
-		},
-		{
-			Name:  "cloud-controller-manager",
-			P:     &p.CloudControllerManager,
-			V:     p.CloudControllerManager,
-			Usage: "Enable cloud-controller-manager component",
-		},
-		{
-			Name:  "master-extra-args",
-			P:     &p.MasterExtraArgs,
-			V:     p.MasterExtraArgs,
-			Usage: "Master extra arguments for k3s installer, wrapped in quotes. e.g.(--master-extra-args '--no-deploy metrics-server')",
-		},
-		{
-			Name:  "worker-extra-args",
-			P:     &p.WorkerExtraArgs,
-			V:     p.WorkerExtraArgs,
-			Usage: "Worker extra arguments for k3s installer, wrapped in quotes. e.g.(--worker-extra-args '--node-taint key=value:NoExecute')",
-		},
-		{
-			Name:  "registry",
-			P:     &p.Registry,
-			V:     p.Registry,
-			Usage: "K3s registry file, see: https://rancher.com/docs/k3s/latest/en/installation/private-registry",
-		},
-		{
-			Name:  "datastore",
-			P:     &p.DataStore,
-			V:     p.DataStore,
-			Usage: "K3s datastore, HA mode `create/join` master node needed this flag",
-		},
-		{
-			Name:  "token",
-			P:     &p.Token,
-			V:     p.Token,
-			Usage: "K3s master token, if empty will automatically generated",
 		},
 		{
 			Name:  "master",

@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"strings"
 
-	com "github.com/cnrancher/autok3s/cmd/common"
 	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/common"
 	"github.com/cnrancher/autok3s/pkg/providers"
@@ -24,7 +23,6 @@ import (
 	"github.com/rancher/wrangler/pkg/data/convert"
 	"github.com/rancher/wrangler/pkg/schemas/validation"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 type Store struct {
@@ -37,12 +35,21 @@ func (c *Store) Create(apiOp *types.APIRequest, schema *types.APISchema, data ty
 	if err != nil {
 		return types.APIObject{}, err
 	}
-	p, err := providers.GetProvider(providerName)
+	base := cluster.NewBaseProvider()
+	err = base.GenerateProvider(providerName)
 	if err != nil {
-		return types.APIObject{}, apierror.NewAPIError(validation.NotFound, err.Error())
+		return types.APIObject{}, err
 	}
-	err = p.SetConfig(b)
-	p.GenerateClusterName()
+	err = base.SetConfig(b)
+	if err != nil {
+		return types.APIObject{}, err
+	}
+	//p, err := providers.GetProvider(providerName)
+	//if err != nil {
+	//	return types.APIObject{}, apierror.NewAPIError(validation.NotFound, err.Error())
+	//}
+	//err = p.SetConfig(b)
+	//p.GenerateClusterName()
 
 	config := apis.Cluster{}
 	err = convert.ToObj(data.Data(), &config)
@@ -50,33 +57,34 @@ func (c *Store) Create(apiOp *types.APIRequest, schema *types.APISchema, data ty
 		return types.APIObject{}, err
 	}
 	// save credential config
-	if providerName != "native" {
-		if err := viper.ReadInConfig(); err != nil {
-			return types.APIObject{}, err
-		}
-		credFlags := p.GetCredentialFlags()
-		options := data.Data().Map("options")
-		for _, credential := range credFlags {
-			if v, ok := options[credential.Name]; ok {
-				viper.Set(fmt.Sprintf(common.BindPrefix, providerName, credential.Name), v)
-			}
-		}
-		if err := viper.WriteConfig(); err != nil {
-			return types.APIObject{}, err
-		}
-	}
+	//if providerName != "native" {
+	//	if err := viper.ReadInConfig(); err != nil {
+	//		return types.APIObject{}, err
+	//	}
+	//	credFlags := b.GetCredentialFlags()
+	//	options := data.Data().Map("options")
+	//	for _, credential := range credFlags {
+	//		if v, ok := options[credential.Name]; ok {
+	//			viper.Set(fmt.Sprintf(common.BindPrefix, providerName, credential.Name), v)
+	//		}
+	//	}
+	//	if err := viper.WriteConfig(); err != nil {
+	//		return types.APIObject{}, err
+	//	}
+	//}
 	// get default ssh config
-	sshConfig := p.GetSSHConfig()
+	sshConfig := base.GetSSHConfig()
 	utils.MergeConfig(reflect.ValueOf(sshConfig).Elem(), reflect.ValueOf(&config.SSH).Elem())
+	base.SSH = sshConfig
 
-	if err := p.CreateCheck(sshConfig); err != nil {
+	if err := base.CreateCheck(sshConfig); err != nil {
 		return types.APIObject{}, apierror.NewAPIError(validation.InvalidOption, err.Error())
 	}
 	go func() {
-		err = p.CreateK3sCluster(sshConfig)
+		err = base.CreateK3sCluster()
 		if err != nil {
 			logrus.Errorf("create cluster error: %v", err)
-			p.Rollback()
+			base.Rollback()
 		}
 	}()
 
@@ -151,11 +159,11 @@ func (c *Store) Delete(apiOp *types.APIRequest, schema *types.APISchema, id stri
 	if err != nil {
 		return types.APIObject{}, err
 	}
-	err = provider.MergeClusterOptions()
-	if err != nil {
-		return types.APIObject{}, err
-	}
-	provider.GenerateClusterName()
+	//err = provider.MergeClusterOptions()
+	//if err != nil {
+	//	return types.APIObject{}, err
+	//}
+	//provider.GenerateClusterName()
 	err = provider.DeleteK3sCluster(true)
 	return types.APIObject{}, err
 }
@@ -287,78 +295,9 @@ func toClusterEvent(op fsnotify.Op, name, id string) types.APIEvent {
 }
 
 func ListCluster() ([]*autok3stypes.ClusterInfo, error) {
-	v := common.CfgPath
-	if v == "" {
-		return nil, fmt.Errorf("state file is empty")
-	}
-
-	fileList, err := ioutil.ReadDir(common.GetClusterStatePath())
-	if err != nil {
-		return nil, err
-	}
-	list := []*autok3stypes.ClusterInfo{}
-	for _, fileInfo := range fileList {
-		if strings.HasSuffix(fileInfo.Name(), fmt.Sprintf("_%s", common.StatusCreating)) ||
-			strings.HasSuffix(fileInfo.Name(), fmt.Sprintf("_%s", common.StatusFailed)) {
-			state, err := readClusterState(filepath.Join(common.GetClusterStatePath(), fileInfo.Name()))
-			if err != nil {
-				logrus.Errorf("failed to read state of cluster %s: %v", strings.Split(fileInfo.Name(), "_")[0], err)
-				continue
-			}
-			fileNameInfo := strings.Split(fileInfo.Name(), "_")
-			clusterInfo := &autok3stypes.ClusterInfo{
-				Name:     state.Name,
-				Provider: state.Provider,
-				Master:   state.Master,
-				Worker:   state.Worker,
-				Status:   fileNameInfo[len(fileNameInfo)-1],
-			}
-			if state.Provider != "native" {
-				clusterInfo.Region = strings.Split(state.Name, ".")[1]
-			}
-			list = append(list, clusterInfo)
-			continue
-		}
-	}
-
-	// get all clusters from state
-	clusters, err := utils.ReadYaml(v, common.StateFile)
-	if err != nil {
-		return nil, fmt.Errorf("read state file error, msg: %v", err)
-	}
-
-	result, err := cluster.ConvertToClusters(clusters)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal state file, msg: %v", err)
-	}
-	var p providers.Provider
-	kubeCfg := fmt.Sprintf("%s/%s", common.CfgPath, common.KubeCfgFile)
-	for _, r := range result {
-		p, err = com.GetProviderByState(r)
-		if err != nil {
-			logrus.Errorf("failed to convert cluster options for cluster %s", r.Name)
-			continue
-		}
-		isExist, _, err := p.IsClusterExist()
-		if err != nil {
-			logrus.Errorf("failed to check cluster %s exist, got error: %v ", r.Name, err)
-			continue
-		}
-		if !isExist {
-			logrus.Warnf("cluster %s is not exist, will remove from config", r.Name)
-			// remove kube config if cluster not exist
-			if err := cluster.OverwriteCfg(r.Name); err != nil {
-				logrus.Errorf("failed to remove unexist cluster %s from kube config", r.Name)
-			}
-			if err := cluster.DeleteState(r.Name, r.Provider); err != nil {
-				logrus.Errorf("failed to remove unexist cluster %s from state: %v", r.Name, err)
-			}
-			continue
-		}
-		config := p.GetCluster(kubeCfg)
-		list = append(list, config)
-	}
-	return list, nil
+	base := cluster.NewBaseProvider()
+	list, err := base.ListCluster()
+	return list, err
 }
 
 func readClusterState(statePath string) (*autok3stypes.Cluster, error) {

@@ -16,7 +16,6 @@ import (
 	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/common"
 	"github.com/cnrancher/autok3s/pkg/hosts"
-	"github.com/cnrancher/autok3s/pkg/providers"
 	putil "github.com/cnrancher/autok3s/pkg/providers/utils"
 	"github.com/cnrancher/autok3s/pkg/types"
 	"github.com/cnrancher/autok3s/pkg/types/alibaba"
@@ -89,17 +88,15 @@ type Alibaba struct {
 }
 
 func init() {
-	providers.RegisterProvider(ProviderName, func() (providers.Provider, error) {
-		return newProvider(), nil
-	})
+	//providers.RegisterProvider(ProviderName, func() (providers.Provider, error) {
+	//	return newProvider(), nil
+	//})
 }
 
 func newProvider() *Alibaba {
 	return &Alibaba{
 		Metadata: types.Metadata{
 			Provider:               ProviderName,
-			Master:                 master,
-			Worker:                 worker,
 			UI:                     ui,
 			CloudControllerManager: cloudControllerManager,
 			K3sVersion:             k3sVersion,
@@ -117,6 +114,8 @@ func newProvider() *Alibaba {
 			Region:                  defaultRegion,
 			Zone:                    defaultZoneID,
 			EIP:                     false,
+			Master:                  master,
+			Worker:                  worker,
 		},
 		Status: types.Status{
 			MasterNodes: make([]types.Node, 0),
@@ -130,8 +129,8 @@ func (p *Alibaba) GetProviderName() string {
 	return p.Provider
 }
 
-func (p *Alibaba) GenerateClusterName() {
-	p.Name = fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
+func (p *Alibaba) GenerateClusterName() string {
+	return fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
 }
 
 func (p *Alibaba) CreateK3sCluster(ssh *types.SSH) (err error) {
@@ -229,10 +228,10 @@ func (p *Alibaba) CreateK3sCluster(ssh *types.SSH) (err error) {
 				AccessKey:    option.AccessKey,
 				AccessSecret: option.AccessSecret,
 			}
-			if c.ClusterCIDR == "" {
-				c.ClusterCIDR = defaultCidr
+			if c.ClusterCidr == "" {
+				c.ClusterCidr = defaultCidr
 			}
-			tmpl := fmt.Sprintf(alibabaCCMTmpl, aliCCM.AccessKey, aliCCM.AccessSecret, c.ClusterCIDR, aliCCM.Region)
+			tmpl := fmt.Sprintf(alibabaCCMTmpl, aliCCM.AccessKey, aliCCM.AccessSecret, c.ClusterCidr, aliCCM.Region)
 			extraManifests = append(extraManifests, fmt.Sprintf(deployCCMCommand,
 				base64.StdEncoding.EncodeToString([]byte(tmpl)), common.K3sManifestsDir))
 		}
@@ -410,6 +409,10 @@ func (p *Alibaba) DeleteK3sCluster(f bool) error {
 	return nil
 }
 
+func (p *Alibaba) GetOptions() interface{} {
+	return p.Options
+}
+
 func (p *Alibaba) SSHK3sNode(ssh *types.SSH, node string) error {
 	p.logger = common.NewLogger(common.Debug, nil)
 	p.logger.Infof("[%s] executing ssh logic...\n", p.GetProviderName())
@@ -449,8 +452,8 @@ func (p *Alibaba) SSHK3sNode(ssh *types.SSH, node string) error {
 	}
 
 	// sync master/worker count
-	p.Metadata.Master = strconv.Itoa(len(p.Status.MasterNodes))
-	p.Metadata.Worker = strconv.Itoa(len(p.Status.WorkerNodes))
+	p.Master = strconv.Itoa(len(p.Status.MasterNodes))
+	p.Worker = strconv.Itoa(len(p.Status.WorkerNodes))
 	c := &types.Cluster{
 		Metadata: p.Metadata,
 		Options:  p.Options,
@@ -1000,7 +1003,7 @@ func (p *Alibaba) getVpcCIDR() (string, error) {
 			p.GetProviderName(), p.VSwitch)
 	}
 
-	p.ClusterCIDR = vSwitchCIDR
+	p.ClusterCidr = vSwitchCIDR
 
 	request := ecs.CreateDescribeVpcsRequest()
 	request.Scheme = "https"

@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +27,8 @@ import (
 	"github.com/rancher/k3s/pkg/agent/templates"
 	"github.com/sirupsen/logrus"
 	yamlv3 "gopkg.in/yaml.v3"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -97,8 +99,8 @@ func InitK3sCluster(cluster *types.Cluster) error {
 		masterExtraArgs += fmt.Sprintf(" --flannel-backend=%s", cluster.Network)
 	}
 
-	if cluster.ClusterCIDR != "" {
-		masterExtraArgs += " --cluster-cidr " + cluster.ClusterCIDR
+	if cluster.ClusterCidr != "" {
+		masterExtraArgs += " --cluster-cidr " + cluster.ClusterCidr
 	}
 
 	logger.Infof("[%s] creating k3s master-%d...\n", cluster.Provider, 1)
@@ -186,7 +188,7 @@ func InitK3sCluster(cluster *types.Cluster) error {
 	logger.Infof("[%s] successfully deployed additional manifests\n", cluster.Provider)
 
 	// merge current cluster to kube config.
-	if err := SaveCfg(cfg, publicIP, cluster.Name); err != nil {
+	if err := SaveCfg(cfg, publicIP, cluster.ContextName); err != nil {
 		return err
 	}
 
@@ -195,7 +197,7 @@ func InitK3sCluster(cluster *types.Cluster) error {
 	// write current cluster to state file.
 	// native provider no need to operate .state file.
 	if p.GetProviderName() != "native" {
-		if err := SaveState(cluster); err != nil {
+		if err := SaveCluster(cluster); err != nil {
 			return err
 		}
 	}
@@ -305,8 +307,8 @@ func JoinK3sNode(merged, added *types.Cluster) error {
 	}
 
 	// sync master & worker numbers.
-	merged.Master = strconv.Itoa(len(merged.MasterNodes))
-	merged.Worker = strconv.Itoa(len(merged.WorkerNodes))
+	//merged.Master = strconv.Itoa(len(merged.MasterNodes))
+	//merged.Worker = strconv.Itoa(len(merged.WorkerNodes))
 
 	// write current cluster to state file.
 	// native provider no need to operate .state file.
@@ -542,6 +544,7 @@ func SaveCfg(cfg, ip, context string) error {
 	if err != nil {
 		return fmt.Errorf("[cluster] write content to kubecfg temp file error, msg: %s", err)
 	}
+	logrus.Infof("======= write config to file %v", result)
 
 	return mergeCfg(context, temp.Name())
 }
@@ -668,8 +671,8 @@ func joinMaster(k3sScript, k3sMirror, dockerMirror,
 		sortedExtraArgs += " --datastore-endpoint " + merged.DataStore
 	}
 
-	if merged.ClusterCIDR != "" {
-		sortedExtraArgs += " --cluster-cidr " + merged.ClusterCIDR
+	if merged.ClusterCidr != "" {
+		sortedExtraArgs += " --cluster-cidr " + merged.ClusterCidr
 	}
 
 	if strings.Contains(extraArgs, "--docker") {
@@ -1125,4 +1128,82 @@ func GetClusterByID(id string) (*types.Cluster, error) {
 func SaveClusterState(cluster *types.Cluster, status string) error {
 	path := common.GetClusterStatePath()
 	return utils.WriteYaml(cluster, path, fmt.Sprintf("%s_%s", cluster.Name, status))
+}
+
+func SaveCluster(cluster *types.Cluster) error {
+	db, err := gorm.Open(sqlite.Open(common.DBFile), &gorm.Config{})
+	if err != nil {
+		return err
+	}
+
+	// find cluster
+	state := &types.ClusterState{}
+	result := db.Where("name = ? AND provider = ?", cluster.Name, cluster.Provider).Find(state)
+
+	opt, err := json.Marshal(cluster.Options)
+	if err != nil {
+		return err
+	}
+	masterNodeBytes, err := json.Marshal(cluster.Status.MasterNodes)
+	if err != nil {
+		return err
+	}
+	workerNodeBytes, err := json.Marshal(cluster.Status.WorkerNodes)
+	if err != nil {
+		return err
+	}
+	state = &types.ClusterState{
+		Metadata:    cluster.Metadata,
+		Options:     opt,
+		Status:      cluster.Status.Status,
+		MasterNodes: masterNodeBytes,
+		WorkerNodes: workerNodeBytes,
+	}
+
+	if result.RowsAffected == 0 {
+		// create cluster
+		result = db.Create(state)
+		return result.Error
+	}
+	result = db.Model(state).Where("name = ? AND provider = ?", cluster.Name, cluster.Provider).Omit("name", "provider").Save(state)
+	return result.Error
+}
+
+func DeleteClusterState(name, provider string) error {
+	db, err := gorm.Open(sqlite.Open(common.DBFile), &gorm.Config{})
+	if err != nil {
+		return err
+	}
+	result := db.Where("name = ? AND provider = ?", name, provider).Delete(&types.ClusterState{})
+	return result.Error
+}
+
+func GetClusterState(name, provider string) (*types.ClusterState, error) {
+	db, err := gorm.Open(sqlite.Open(common.DBFile), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+	state := &types.ClusterState{}
+	result := db.Where("name = ? AND provider = ?", name, provider).Find(state)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, fmt.Errorf("cluster %s is not exist", name)
+	}
+	return state, nil
+}
+
+func ListClusterState() ([]*types.ClusterState, error) {
+	db, err := gorm.Open(sqlite.Open(common.DBFile), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+
+	clusterList := []*types.ClusterState{}
+	result := db.Find(&clusterList)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return clusterList, nil
 }

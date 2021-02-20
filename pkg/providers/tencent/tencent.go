@@ -16,7 +16,6 @@ import (
 	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/common"
 	"github.com/cnrancher/autok3s/pkg/hosts"
-	"github.com/cnrancher/autok3s/pkg/providers"
 	putil "github.com/cnrancher/autok3s/pkg/providers/utils"
 	"github.com/cnrancher/autok3s/pkg/types"
 	"github.com/cnrancher/autok3s/pkg/types/tencent"
@@ -88,17 +87,15 @@ type Tencent struct {
 }
 
 func init() {
-	providers.RegisterProvider(ProviderName, func() (providers.Provider, error) {
-		return NewProvider(), nil
-	})
+	//providers.RegisterProvider(ProviderName, func() (providers.Provider, error) {
+	//	return NewProvider(), nil
+	//})
 }
 
 func NewProvider() *Tencent {
 	return &Tencent{
 		Metadata: types.Metadata{
 			Provider:      ProviderName,
-			Master:        master,
-			Worker:        worker,
 			UI:            ui,
 			K3sVersion:    k3sVersion,
 			K3sChannel:    k3sChannel,
@@ -114,6 +111,8 @@ func NewProvider() *Tencent {
 			PublicIPAssignedEIP:     false,
 			Region:                  defaultRegion,
 			Zone:                    defaultZone,
+			Master:                  master,
+			Worker:                  worker,
 		},
 		Status: types.Status{
 			MasterNodes: make([]types.Node, 0),
@@ -127,8 +126,8 @@ func (p *Tencent) GetProviderName() string {
 	return ProviderName
 }
 
-func (p *Tencent) GenerateClusterName() {
-	p.Name = fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
+func (p *Tencent) GenerateClusterName() string {
+	return fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
 }
 
 func (p *Tencent) CreateK3sCluster(ssh *types.SSH) (err error) {
@@ -210,11 +209,11 @@ func (p *Tencent) CreateK3sCluster(ssh *types.SSH) (err error) {
 			}
 			tencentCCM.SecretID = base64.StdEncoding.EncodeToString([]byte(option.SecretID))
 			tencentCCM.SecretKey = base64.StdEncoding.EncodeToString([]byte(option.SecretKey))
-			if p.ClusterCIDR == "" {
-				p.ClusterCIDR = defaultCidr
+			if p.ClusterCidr == "" {
+				p.ClusterCidr = defaultCidr
 			}
 			tmpl := fmt.Sprintf(tencentCCMTmpl, tencentCCM.Region, tencentCCM.SecretID, tencentCCM.SecretKey,
-				tencentCCM.VpcID, tencentCCM.NetworkRouteTableName, p.ClusterCIDR)
+				tencentCCM.VpcID, tencentCCM.NetworkRouteTableName, p.ClusterCidr)
 
 			extraManifests = append(extraManifests, fmt.Sprintf(deployCCMCommand,
 				base64.StdEncoding.EncodeToString([]byte(tmpl)), common.K3sManifestsDir))
@@ -449,8 +448,8 @@ func (p *Tencent) SSHK3sNode(ssh *types.SSH, ip string) error {
 		}
 	}
 	// sync master/worker count
-	p.Metadata.Master = strconv.Itoa(len(p.Status.MasterNodes))
-	p.Metadata.Worker = strconv.Itoa(len(p.Status.WorkerNodes))
+	p.Master = strconv.Itoa(len(p.Status.MasterNodes))
+	p.Worker = strconv.Itoa(len(p.Status.WorkerNodes))
 	c := &types.Cluster{
 		Metadata: p.Metadata,
 		Options:  p.Options,
@@ -478,6 +477,10 @@ func (p *Tencent) SSHK3sNode(ssh *types.SSH, ip string) error {
 	p.logger.Infof("[%s] successfully executed ssh logic\n", p.GetProviderName())
 
 	return nil
+}
+
+func (p *Tencent) GetOptions() interface{} {
+	return p.Options
 }
 
 func (p *Tencent) IsClusterExist() (bool, []string, error) {

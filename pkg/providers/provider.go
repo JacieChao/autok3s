@@ -31,15 +31,15 @@ type Provider interface {
 	// Join command flags.
 	GetJoinFlags(cmd *cobra.Command) *pflag.FlagSet
 	// Delete command flags.
-	GetDeleteFlags(cmd *cobra.Command) *pflag.FlagSet
+	GetDeleteFlags() []types.Flag
 	// SSH command flags.
 	GetSSHFlags(cmd *cobra.Command) *pflag.FlagSet
 	// Credential flags.
 	GetCredentialFlags() []types.Flag
 	// Use this method to bind Viper, although it is somewhat repetitive.
 	BindCredentialFlags() *pflag.FlagSet
-	// Generate cluster name.
-	GenerateClusterName()
+	// Generate cluster context name.
+	GenerateClusterName() string
 	// Generate create/join extra args for master nodes
 	GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string
 	// Generate create/join extra args for worker nodes
@@ -57,7 +57,7 @@ type Provider interface {
 	// Rollback when error occurs.
 	Rollback() error
 	// merge exist cluster options
-	MergeClusterOptions() error
+	MergeClusterOptions(cluster *types.Cluster)
 	// describe detailed cluster information
 	DescribeCluster(kubecfg string) *types.ClusterInfo
 	// get cluster simple information
@@ -71,6 +71,15 @@ type Provider interface {
 	SetConfig(config []byte) error
 	// validate create flags
 	CreateCheck(ssh *types.SSH) error
+	// get provider options
+	GetOptions() interface{}
+	// prepare instance
+	Prepare(ssh *types.SSH) (*types.Cluster, error)
+	// generate provider manifests
+	GenerateManifest() []string
+	// merge metadata to provider
+	SetMetadata(config *types.Metadata)
+	SetOptions(options []byte) error
 }
 
 // RegisterProvider registers a provider.Factory by name.

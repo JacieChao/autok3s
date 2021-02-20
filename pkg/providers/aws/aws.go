@@ -67,6 +67,7 @@ type Amazon struct {
 	types.Metadata   `json:",inline"`
 	typesaws.Options `json:",inline"`
 	types.Status     `json:"status"`
+	ContextName      string
 
 	client *ec2.EC2
 	m      *sync.Map
@@ -83,8 +84,6 @@ func newProvider() *Amazon {
 	return &Amazon{
 		Metadata: types.Metadata{
 			Provider:               providerName,
-			Master:                 master,
-			Worker:                 worker,
 			UI:                     ui,
 			CloudControllerManager: cloudControllerManager,
 			K3sVersion:             k3sVersion,
@@ -101,12 +100,15 @@ func newProvider() *Amazon {
 			InstanceType:        instanceType,
 			AMI:                 ami,
 			RequestSpotInstance: requestSpotInstance,
+			Master:              master,
+			Worker:              worker,
 		},
 		Status: types.Status{
 			MasterNodes: make([]types.Node, 0),
 			WorkerNodes: make([]types.Node, 0),
 		},
-		m: new(syncmap.Map),
+		m:      new(syncmap.Map),
+		logger: common.NewLogger(common.Debug, nil),
 	}
 }
 
@@ -116,12 +118,17 @@ func (p *Amazon) GetProviderName() string {
 	return p.Provider
 }
 
-func (p *Amazon) GenerateClusterName() {
-	p.Name = fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
+func (p *Amazon) GenerateClusterName() string {
+	p.ContextName = fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
+	return p.ContextName
+}
+
+func (p *Amazon) GetOptions() interface{} {
+	return p.Options
 }
 
 func (p *Amazon) CreateK3sCluster(ssh *types.SSH) (err error) {
-	logFile, err := common.GetLogFile(p.Name)
+	logFile, err := common.GetLogFile(p.ContextName)
 	if err != nil {
 		return err
 	}
@@ -144,11 +151,11 @@ func (p *Amazon) CreateK3sCluster(ssh *types.SSH) (err error) {
 			}
 			c.Status.Status = common.StatusFailed
 			cluster.SaveClusterState(c, common.StatusFailed)
-			os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.Name, common.StatusCreating)))
+			os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.ContextName, common.StatusCreating)))
 		}
 		if err == nil && len(p.Status.MasterNodes) > 0 {
 			p.logger.Info(common.UsageInfoTitle)
-			p.logger.Infof(common.UsageContext, p.Name)
+			p.logger.Infof(common.UsageContext, p.ContextName)
 			p.logger.Info(common.UsagePods)
 			if p.UI {
 				if p.CloudControllerManager {
@@ -159,11 +166,11 @@ func (p *Amazon) CreateK3sCluster(ssh *types.SSH) (err error) {
 			}
 			cluster.SaveClusterState(c, common.StatusRunning)
 			// remove creating/failed state file and save running state
-			os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.Name, common.StatusCreating)))
+			os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.ContextName, common.StatusCreating)))
 		}
 		logFile.Close()
 	}()
-	os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.Name, common.StatusFailed)))
+	os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.ContextName, common.StatusFailed)))
 
 	p.logger = common.NewLogger(common.Debug, logFile)
 	p.logger.Infof("[%s] executing create logic...", p.GetProviderName())
@@ -204,11 +211,19 @@ func (p *Amazon) CreateK3sCluster(ssh *types.SSH) (err error) {
 	return nil
 }
 
+func (p *Amazon) GenerateManifest() []string {
+	if p.CloudControllerManager {
+		return []string{fmt.Sprintf(deployCCMCommand,
+			base64.StdEncoding.EncodeToString([]byte(amazonCCMTmpl)), common.K3sManifestsDir)}
+	}
+	return nil
+}
+
 func (p *Amazon) JoinK3sNode(ssh *types.SSH) (err error) {
 	if p.m == nil {
 		p.m = new(syncmap.Map)
 	}
-	logFile, err := common.GetLogFile(p.Name)
+	logFile, err := common.GetLogFile(p.ContextName)
 	if err != nil {
 		return err
 	}
@@ -222,7 +237,7 @@ func (p *Amazon) JoinK3sNode(ssh *types.SSH) (err error) {
 			cluster.SaveClusterState(c, common.StatusRunning)
 		}
 		// remove join state file and save running state
-		os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.Name, common.StatusJoin)))
+		os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.ContextName, common.StatusJoin)))
 		logFile.Close()
 	}()
 
@@ -275,33 +290,16 @@ func (p *Amazon) JoinK3sNode(ssh *types.SSH) (err error) {
 }
 
 func (p *Amazon) DeleteK3sCluster(f bool) (err error) {
-	isConfirmed := true
+	p.logger = common.NewLogger(common.Debug, nil)
+	p.logger.Infof("[%s] executing delete cluster logic...\n", p.GetProviderName())
+	logrus.Infof("===== get meta %v, status %v", p.Metadata, p.Status)
+	p.newClient()
+	err = p.deleteCluster(f)
+	if err != nil {
+		return err
+	}
+	p.logger.Infof("[%s] successfully excuted delete cluster logic\n", p.GetProviderName())
 
-	if !f {
-		isConfirmed = utils.AskForConfirmation(fmt.Sprintf("[%s] are you sure to delete cluster %s", p.GetProviderName(), p.Name))
-	}
-	if isConfirmed {
-		logFile, err := common.GetLogFile(p.Name)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			logFile.Close()
-			// remove log file
-			os.Remove(filepath.Join(common.GetLogPath(), p.Name))
-			// remove state file
-			os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.Name, common.StatusRunning)))
-			os.Remove(filepath.Join(common.GetClusterStatePath(), fmt.Sprintf("%s_%s", p.Name, common.StatusFailed)))
-		}()
-		p.logger = common.NewLogger(common.Debug, logFile)
-		p.logger.Infof("[%s] executing delete cluster logic...\n", p.GetProviderName())
-		p.newClient()
-		err = p.deleteCluster(f)
-		if err != nil {
-			return err
-		}
-		p.logger.Infof("[%s] successfully excuted delete cluster logic\n", p.GetProviderName())
-	}
 	return nil
 }
 
@@ -338,8 +336,8 @@ func (p *Amazon) SSHK3sNode(ssh *types.SSH, ip string) error {
 	}
 
 	// sync master/worker count
-	p.Metadata.Master = strconv.Itoa(len(p.Status.MasterNodes))
-	p.Metadata.Worker = strconv.Itoa(len(p.Status.WorkerNodes))
+	p.Master = strconv.Itoa(len(p.Status.MasterNodes))
+	p.Worker = strconv.Itoa(len(p.Status.WorkerNodes))
 	c := &types.Cluster{
 		Metadata: p.Metadata,
 		Options:  p.Options,
@@ -406,14 +404,14 @@ func (p *Amazon) GenerateWorkerExtraArgs(cluster *types.Cluster, worker types.No
 func (p *Amazon) GetCluster(kubecfg string) *types.ClusterInfo {
 	p.logger = common.NewLogger(common.Debug, nil)
 	c := &types.ClusterInfo{
-		Name:     p.Name,
+		Name:     p.ContextName,
 		Region:   p.Region,
 		Zone:     p.Zone,
 		Provider: p.GetProviderName(),
 	}
-	client, err := cluster.GetClusterConfig(p.Name, kubecfg)
+	client, err := cluster.GetClusterConfig(p.ContextName, kubecfg)
 	if err != nil {
-		p.logger.Errorf("[%s] failed to generate kube client for cluster %s: %v", p.GetProviderName(), p.Name, err)
+		p.logger.Errorf("[%s] failed to generate kube client for cluster %s: %v", p.GetProviderName(), p.ContextName, err)
 		c.Status = types.ClusterStatusUnknown
 		c.Version = types.ClusterStatusUnknown
 		return c
@@ -430,7 +428,7 @@ func (p *Amazon) GetCluster(kubecfg string) *types.ClusterInfo {
 
 	output, err := p.describeInstances()
 	if err != nil || len(output) == 0 {
-		p.logger.Errorf("[%s] failed to get instance for cluster %s: %v", p.GetProviderName(), p.Name, err)
+		p.logger.Errorf("[%s] failed to get instance for cluster %s: %v", p.GetProviderName(), p.ContextName, err)
 		c.Master = "0"
 		c.Worker = "0"
 		return c
@@ -479,14 +477,14 @@ func (p *Amazon) GetClusterConfig() (map[string]schemas.Field, error) {
 func (p *Amazon) DescribeCluster(kubecfg string) *types.ClusterInfo {
 	p.logger = common.NewLogger(common.Debug, nil)
 	c := &types.ClusterInfo{
-		Name:     strings.Split(p.Name, ".")[0],
+		Name:     strings.Split(p.ContextName, ".")[0],
 		Region:   p.Region,
 		Zone:     p.Zone,
 		Provider: p.GetProviderName(),
 	}
-	client, err := cluster.GetClusterConfig(p.Name, kubecfg)
+	client, err := cluster.GetClusterConfig(p.ContextName, kubecfg)
 	if err != nil {
-		p.logger.Errorf("[%s] failed to generate kube client for cluster %s: %v", p.GetProviderName(), p.Name, err)
+		p.logger.Errorf("[%s] failed to generate kube client for cluster %s: %v", p.GetProviderName(), p.ContextName, err)
 		c.Status = types.ClusterStatusUnknown
 		c.Version = types.ClusterStatusUnknown
 		return c
@@ -498,7 +496,7 @@ func (p *Amazon) DescribeCluster(kubecfg string) *types.ClusterInfo {
 
 	output, err := p.describeInstances()
 	if err != nil || len(output) == 0 {
-		p.logger.Errorf("[%s] failed to get instance for cluster %s: %v", p.GetProviderName(), p.Name, err)
+		p.logger.Errorf("[%s] failed to get instance for cluster %s: %v", p.GetProviderName(), p.ContextName, err)
 		c.Master = "0"
 		c.Worker = "0"
 		return c
@@ -540,7 +538,7 @@ func (p *Amazon) DescribeCluster(kubecfg string) *types.ClusterInfo {
 		c.Version = cluster.GetClusterVersion(client)
 		nodes, err := cluster.DescribeClusterNodes(client, instanceNodes)
 		if err != nil {
-			p.logger.Errorf("[%s] failed to list nodes of cluster %s: %v", p.GetProviderName(), p.Name, err)
+			p.logger.Errorf("[%s] failed to list nodes of cluster %s: %v", p.GetProviderName(), p.ContextName, err)
 			return c
 		}
 		c.Nodes = nodes
@@ -552,6 +550,24 @@ func (p *Amazon) DescribeCluster(kubecfg string) *types.ClusterInfo {
 
 func (p *Amazon) GetProviderOption() (map[string]schemas.Field, error) {
 	return utils.ConvertToFields(p.Options)
+}
+
+func (p *Amazon) SetMetadata(config *types.Metadata) {
+	sourceMeta := reflect.ValueOf(&p.Metadata).Elem()
+	targetMeta := reflect.ValueOf(config).Elem()
+	utils.MergeConfig(sourceMeta, targetMeta)
+}
+
+func (p *Amazon) SetOptions(opt []byte) error {
+	sourceOption := reflect.ValueOf(&p.Options).Elem()
+	option := &typesaws.Options{}
+	err := json.Unmarshal(opt, option)
+	if err != nil {
+		return err
+	}
+	targetOption := reflect.ValueOf(option).Elem()
+	utils.MergeConfig(sourceOption, targetOption)
+	return nil
 }
 
 func (p *Amazon) SetConfig(config []byte) error {
@@ -580,7 +596,7 @@ func (p *Amazon) SetConfig(config []byte) error {
 }
 
 func (p *Amazon) Rollback() error {
-	logFile, err := common.GetLogFile(p.Name)
+	logFile, err := common.GetLogFile(p.ContextName)
 	if err != nil {
 		return err
 	}
@@ -605,7 +621,7 @@ func (p *Amazon) Rollback() error {
 			},
 			{
 				Key:   aws.String("cluster"),
-				Value: aws.String(common.TagClusterPrefix + p.Name),
+				Value: aws.String(common.TagClusterPrefix + p.ContextName),
 			},
 		}
 		tagInput := &ec2.DeleteTagsInput{}
@@ -632,6 +648,61 @@ func (p *Amazon) Rollback() error {
 	p.logger.Infof("[%s] successfully executed rollback logic\n", p.GetProviderName())
 
 	return logFile.Close()
+}
+
+func (p *Amazon) Prepare(ssh *types.SSH) (*types.Cluster, error) {
+	p.newClient()
+	p.ContextName = p.GenerateClusterName()
+	masterNum, _ := strconv.Atoi(p.Master)
+	workerNum, _ := strconv.Atoi(p.Worker)
+
+	p.logger.Infof("[%s] %d masters and %d workers will be added in region %s\n", p.GetProviderName(), masterNum, workerNum, p.Region)
+
+	if err := p.createKeyPair(ssh); err != nil {
+		return nil, err
+	}
+
+	if p.SecurityGroup == "" {
+		if err := p.configSecurityGroup(); err != nil {
+			return nil, err
+		}
+	}
+
+	// run ecs master instances.
+	if masterNum > 0 {
+		p.logger.Debugf("[%s] prepare for %d of master instances \n", p.GetProviderName(), masterNum)
+		if err := p.runInstances(masterNum, true); err != nil {
+			return nil, err
+		}
+		p.logger.Debugf("[%s] %d of master instances created successfully \n", p.GetProviderName(), masterNum)
+	}
+
+	// run ecs worker instances.
+	if workerNum > 0 {
+		p.logger.Debugf("[%s] prepare for %d of worker instances \n", p.GetProviderName(), workerNum)
+		if err := p.runInstances(workerNum, false); err != nil {
+			return nil, err
+		}
+		p.logger.Debugf("[%s] %d of worker instances created successfully \n", p.GetProviderName(), workerNum)
+	}
+
+	if err := p.getInstanceStatus(ec2.InstanceStateNameRunning); err != nil {
+		return nil, err
+	}
+
+	c, err := p.assembleInstanceStatus(ssh)
+
+	if c.CloudControllerManager {
+		// generate tags for security group and subnet
+		// https://rancher.com/docs/rancher/v2.x/en/cluster-provisioning/rke-clusters/cloud-providers/amazon/#2-configure-the-clusterid
+		err = p.addTagsForCCMResource()
+		if err != nil {
+			return nil, err
+		}
+		c.MasterExtraArgs += " --disable-cloud-controller --no-deploy servicelb,traefik,local-storage"
+	}
+	c.SSH = *ssh
+	return c, nil
 }
 
 func (p *Amazon) generateInstance(fn checkFun, ssh *types.SSH) (*types.Cluster, error) {
@@ -853,7 +924,7 @@ func (p *Amazon) setInstanceTags(master bool, instanceIDs []*string) error {
 		},
 		{
 			Key:   aws.String("cluster"),
-			Value: aws.String(common.TagClusterPrefix + p.Name),
+			Value: aws.String(common.TagClusterPrefix + p.ContextName),
 		},
 		{
 			Key:   aws.String("master"),
@@ -864,18 +935,18 @@ func (p *Amazon) setInstanceTags(master bool, instanceIDs []*string) error {
 	if master {
 		tags = append(tags, &ec2.Tag{
 			Key:   aws.String("Name"),
-			Value: aws.String(fmt.Sprintf(common.MasterInstanceName, p.Name)),
+			Value: aws.String(fmt.Sprintf(common.MasterInstanceName, p.ContextName)),
 		})
 	} else {
 		tags = append(tags, &ec2.Tag{
 			Key:   aws.String("Name"),
-			Value: aws.String(fmt.Sprintf(common.WorkerInstanceName, p.Name)),
+			Value: aws.String(fmt.Sprintf(common.WorkerInstanceName, p.ContextName)),
 		})
 	}
 
 	if p.CloudControllerManager {
 		tags = append(tags, &ec2.Tag{
-			Key:   aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", p.Name)),
+			Key:   aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", p.ContextName)),
 			Value: aws.String("owned"),
 		})
 	}
@@ -931,7 +1002,7 @@ func (p *Amazon) getInstanceStatus(aimStatus string) error {
 func (p *Amazon) assembleInstanceStatus(ssh *types.SSH) (*types.Cluster, error) {
 	output, err := p.describeInstances()
 	if err != nil || len(output) == 0 {
-		return nil, fmt.Errorf("[%s] there's no instance for cluster %s: %v", p.GetProviderName(), p.Name, err)
+		return nil, fmt.Errorf("[%s] there's no instance for cluster %s: %v", p.GetProviderName(), p.ContextName, err)
 	}
 
 	for _, instance := range output {
@@ -967,9 +1038,10 @@ func (p *Amazon) assembleInstanceStatus(ssh *types.SSH) (*types.Cluster, error) 
 	p.syncNodeStatusWithInstance(ssh)
 
 	return &types.Cluster{
-		Metadata: p.Metadata,
-		Options:  p.Options,
-		Status:   p.Status,
+		Metadata:    p.Metadata,
+		Options:     p.Options,
+		Status:      p.Status,
+		ContextName: p.ContextName,
 	}, nil
 
 }
@@ -1012,7 +1084,7 @@ func (p *Amazon) describeInstances() ([]*ec2.Instance, error) {
 			},
 			{
 				Name:   aws.String("tag:cluster"),
-				Values: aws.StringSlice([]string{common.TagClusterPrefix + p.Name}),
+				Values: aws.StringSlice([]string{common.TagClusterPrefix + p.ContextName}),
 			},
 		},
 		MaxResults: aws.Int64(int64(50)),
@@ -1022,7 +1094,7 @@ func (p *Amazon) describeInstances() ([]*ec2.Instance, error) {
 	for {
 		output, err := p.client.DescribeInstances(describeInput)
 		if output == nil || err != nil {
-			return nil, fmt.Errorf("[%s] failed to get instance for cluster %s: %v", p.GetProviderName(), p.Name, err)
+			return nil, fmt.Errorf("[%s] failed to get instance for cluster %s: %v", p.GetProviderName(), p.ContextName, err)
 		}
 
 		if len(output.Reservations) > 0 {
@@ -1078,7 +1150,7 @@ func (p *Amazon) CreateCheck(ssh *types.SSH) error {
 	}
 
 	if exist {
-		context := strings.Split(p.Name, ".")
+		context := strings.Split(p.ContextName, ".")
 		return fmt.Errorf("[%s] calling preflight error: cluster `%s` at region %s is already exist",
 			p.GetProviderName(), context[0], p.Region)
 	}
@@ -1206,7 +1278,7 @@ func (p *Amazon) joinCheck() error {
 
 	if !exist {
 		return fmt.Errorf("[%s] calling preflight error: cluster name `%s` do not exist",
-			p.GetProviderName(), p.Name)
+			p.GetProviderName(), p.ContextName)
 	}
 
 	// remove invalid worker nodes from .state file.
@@ -1235,23 +1307,23 @@ func (p *Amazon) joinCheck() error {
 }
 
 func (p *Amazon) createKeyPair(ssh *types.SSH) error {
-	if p.KeypairName != "" && ssh.SSHKeyPath == "" && p.KeypairName != p.Name {
+	if p.KeypairName != "" && ssh.SSHKeyPath == "" && p.KeypairName != p.ContextName {
 		return fmt.Errorf("[%s] calling preflight error: --ssh-key-path must set with --key-pair %s", p.GetProviderName(), p.KeypairName)
 	}
 
 	// check upload keypair
 	if ssh.SSHKeyPath == "" {
-		if _, err := os.Stat(common.GetDefaultSSHKeyPath(p.Name, p.GetProviderName())); err != nil {
+		if _, err := os.Stat(common.GetDefaultSSHKeyPath(p.ContextName, p.GetProviderName())); err != nil {
 			if !os.IsNotExist(err) {
 				return err
 			}
-			pk, err := putil.CreateKeyPair(ssh, p.GetProviderName(), p.Name, p.KeypairName)
+			pk, err := putil.CreateKeyPair(ssh, p.GetProviderName(), p.ContextName, p.KeypairName)
 			if err != nil {
 				return err
 			}
 
 			if pk != nil {
-				keyName := p.Name
+				keyName := p.ContextName
 				p.logger.Debugf("creating key pair: %s", keyName)
 				_, err = p.client.ImportKeyPair(&ec2.ImportKeyPairInput{
 					KeyName:           &keyName,
@@ -1263,8 +1335,8 @@ func (p *Amazon) createKeyPair(ssh *types.SSH) error {
 				p.KeypairName = keyName
 			}
 		}
-		p.KeypairName = p.Name
-		ssh.SSHKeyPath = common.GetDefaultSSHKeyPath(p.Name, p.GetProviderName())
+		p.KeypairName = p.ContextName
+		ssh.SSHKeyPath = common.GetDefaultSSHKeyPath(p.ContextName, p.GetProviderName())
 	}
 
 	return nil
@@ -1452,7 +1524,7 @@ func (p *Amazon) configPermission(group *ec2.SecurityGroup) []*ec2.IpPermission 
 func (p *Amazon) syncClusterInstance(ssh *types.SSH) ([]*ec2.Instance, error) {
 	output, err := p.describeInstances()
 	if err != nil || len(output) == 0 {
-		return nil, fmt.Errorf("[%s] there's no exist instance for cluster %s: %v", p.GetProviderName(), p.Name, err)
+		return nil, fmt.Errorf("[%s] there's no exist instance for cluster %s: %v", p.GetProviderName(), p.ContextName, err)
 	}
 
 	for _, instance := range output {
@@ -1489,9 +1561,9 @@ func (p *Amazon) deleteCluster(f bool) error {
 		return fmt.Errorf("[%s] calling deleteCluster error, msg: %v", p.GetProviderName(), err)
 	}
 	if !exist {
-		p.logger.Errorf("[%s] cluster %s is not exist", p.GetProviderName(), p.Name)
+		p.logger.Errorf("[%s] cluster %s is not exist", p.GetProviderName(), p.ContextName)
 		if !f {
-			return fmt.Errorf("[%s] calling preflight error: cluster name `%s` do not exist", p.GetProviderName(), p.Name)
+			return fmt.Errorf("[%s] calling preflight error: cluster name `%s` do not exist", p.GetProviderName(), p.ContextName)
 		}
 		return nil
 	}
@@ -1529,7 +1601,7 @@ func (p *Amazon) deleteCluster(f bool) error {
 			},
 			{
 				Key:   aws.String("cluster"),
-				Value: aws.String(common.TagClusterPrefix + p.Name),
+				Value: aws.String(common.TagClusterPrefix + p.ContextName),
 			},
 		}
 		tagInput := &ec2.DeleteTagsInput{}
@@ -1553,19 +1625,6 @@ func (p *Amazon) deleteCluster(f bool) error {
 			}
 		}
 	}
-	err = cluster.OverwriteCfg(p.Name)
-
-	if err != nil && !f {
-		return fmt.Errorf("[%s] synchronizing .cfg file error, msg: %v", p.GetProviderName(), err)
-	}
-
-	err = cluster.DeleteState(p.Name, p.Provider)
-
-	if err != nil && !f {
-		return fmt.Errorf("[%s] synchronizing .state file error, msg: %v", p.GetProviderName(), err)
-	}
-
-	p.logger.Infof("[%s] successfully deleted cluster %s\n", p.GetProviderName(), p.Name)
 	return nil
 }
 
@@ -1601,7 +1660,7 @@ func (p *Amazon) addTagsForCCMResource() error {
 	}
 	tags := result.SecurityGroups[0].Tags
 	tags = append(tags, &ec2.Tag{
-		Key:   aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", p.Name)),
+		Key:   aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", p.ContextName)),
 		Value: aws.String("shared"),
 	})
 	_, err = p.client.CreateTags(&ec2.CreateTagsInput{
@@ -1627,7 +1686,7 @@ func (p *Amazon) addTagsForCCMResource() error {
 	}
 	subnetTags := subnets.Subnets[0].Tags
 	subnetTags = append(subnetTags, &ec2.Tag{
-		Key:   aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", p.Name)),
+		Key:   aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", p.ContextName)),
 		Value: aws.String("shared"),
 	})
 	_, err = p.client.CreateTags(&ec2.CreateTagsInput{
@@ -1641,7 +1700,7 @@ func (p *Amazon) addTagsForCCMResource() error {
 func (p *Amazon) removeTagsForCCMResource() error {
 	deletedTags := []*ec2.Tag{
 		{
-			Key:   aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", p.Name)),
+			Key:   aws.String(fmt.Sprintf("kubernetes.io/cluster/%s", p.ContextName)),
 			Value: aws.String("shared"),
 		},
 	}

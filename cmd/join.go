@@ -54,18 +54,19 @@ func JoinCommand() *cobra.Command {
 		if jProvider == "" {
 			logrus.Fatalln("required flags(s) \"[provider]\" not set")
 		}
-		common.InitPFlags(cmd, jp)
-		err := jp.MergeClusterOptions()
-		if err != nil {
-			return err
-		}
+		//common.InitPFlags(cmd, jp)
+		//err := jp.MergeClusterOptions()
+		//if err != nil {
+		//	return err
+		//}
 
-		return common.MakeSureCredentialFlag(cmd.Flags(), jp)
+		return nil
+		//return common.MakeSureCredentialFlag(cmd.Flags(), jp)
 	}
 
 	joinCmd.Run = func(cmd *cobra.Command, args []string) {
 		// generate cluster name. e.g. input: "--name k3s1 --region cn-hangzhou" output: "k3s1.cn-hangzhou"
-		jp.GenerateClusterName()
+		//jp.GenerateClusterName()
 
 		// join k3s node to the cluster which named with generated cluster name.
 		if err := jp.JoinK3sNode(jSSH); err != nil {

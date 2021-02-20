@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/cnrancher/autok3s/cmd/common"
-	"github.com/cnrancher/autok3s/pkg/providers"
+	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/utils"
 
 	"github.com/sirupsen/logrus"
@@ -14,48 +14,43 @@ var (
 		Use:   "delete",
 		Short: "Delete k3s cluster",
 	}
-	dProvider = ""
-	force     = false
-	dp        providers.Provider
+	force = false
 )
 
 func init() {
-	deleteCmd.Flags().StringVarP(&dProvider, "provider", "p", dProvider, "Provider is a module which provides an interface for managing cloud resources")
 	deleteCmd.Flags().BoolVarP(&force, "force", "f", force, "Force delete cluster")
 }
 
 func DeleteCommand() *cobra.Command {
+	b := cluster.NewBaseProvider()
+	deleteCmd.Flags().AddFlagSet(utils.ConvertFlags(deleteCmd, b.GetDeleteFlags()))
 	pStr := common.FlagHackLookup("--provider")
 
 	if pStr != "" {
-		if reg, err := providers.GetProvider(pStr); err != nil {
+		err := b.GenerateProvider(pStr)
+		if err != nil {
 			logrus.Fatalln(err)
-		} else {
-			dp = reg
 		}
 
-		deleteCmd.Flags().AddFlagSet(utils.ConvertFlags(deleteCmd, dp.GetCredentialFlags()))
-		deleteCmd.Flags().AddFlagSet(dp.GetDeleteFlags(deleteCmd))
-		joinCmd.Example = dp.GetUsageExample("delete")
+		deleteCmd.Flags().AddFlagSet(utils.ConvertFlags(deleteCmd, b.GetProviderDeleteFlags()))
+		deleteCmd.Example = b.GetUsageExample("delete")
 	}
 
 	deleteCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		if dProvider == "" {
+		if pStr == "" {
 			logrus.Fatalln("required flags(s) \"[provider]\" not set")
 		}
-		common.InitPFlags(cmd, dp)
-		err := dp.MergeClusterOptions()
+		common.InitPFlags(cmd, b)
+		err := b.MergeClusterOptions()
 		if err != nil {
 			return err
 		}
 
-		return common.MakeSureCredentialFlag(cmd.Flags(), dp)
+		return common.MakeSureCredentialFlag(cmd.Flags(), b)
 	}
 
 	deleteCmd.Run = func(cmd *cobra.Command, args []string) {
-		dp.GenerateClusterName()
-
-		if err := dp.DeleteK3sCluster(force); err != nil {
+		if err := b.DeleteK3sCluster(force); err != nil {
 			logrus.Fatalln(err)
 		}
 	}

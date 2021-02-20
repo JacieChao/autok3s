@@ -13,6 +13,8 @@ import (
 	_ "github.com/cnrancher/autok3s/pkg/providers/native"
 	_ "github.com/cnrancher/autok3s/pkg/providers/tencent"
 
+	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/morikuni/aec"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

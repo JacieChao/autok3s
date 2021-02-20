@@ -29,3 +29,4 @@ main
 !**/Dockerfile.dapper
 .autok3s/
 static/
+autok3s.db

@@ -53,16 +53,17 @@ func SSHCommand() *cobra.Command {
 		if sProvider == "" {
 			logrus.Fatalln("required flags(s) \"[provider]\" not set")
 		}
-		common.InitPFlags(cmd, sp)
-		err := sp.MergeClusterOptions()
-		if err != nil {
-			return err
-		}
-		return common.MakeSureCredentialFlag(cmd.Flags(), sp)
+		//common.InitPFlags(cmd, sp)
+		//err := sp.MergeClusterOptions()
+		//if err != nil {
+		//	return err
+		//}
+		return nil
+		//return common.MakeSureCredentialFlag(cmd.Flags(), sp)
 	}
 
 	sshCmd.Run = func(cmd *cobra.Command, args []string) {
-		sp.GenerateClusterName()
+		//sp.GenerateClusterName()
 		node := ""
 		if len(args) > 0 {
 			node = args[0]

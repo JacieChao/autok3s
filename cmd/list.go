@@ -1,17 +1,10 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
-	c "github.com/cnrancher/autok3s/cmd/common"
 	"github.com/cnrancher/autok3s/pkg/cluster"
-	"github.com/cnrancher/autok3s/pkg/common"
-	"github.com/cnrancher/autok3s/pkg/providers"
-	"github.com/cnrancher/autok3s/pkg/types"
-	"github.com/cnrancher/autok3s/pkg/utils"
-
 	"github.com/olekukonko/tablewriter"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -40,46 +33,11 @@ func listCluster() {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeader([]string{"Name", "Region", "Provider", "Status", "Masters", "Workers", "Version"})
 
-	v := common.CfgPath
-	if v == "" {
-		logrus.Fatalln("state path is empty")
-	}
-	// get all clusters from state
-	clusters, err := utils.ReadYaml(v, common.StateFile)
-	if err != nil {
-		logrus.Fatalf("read state file error, msg: %v\n", err)
-	}
+	base := cluster.NewBaseProvider()
+	filters, err := base.ListCluster()
 
-	result, err := cluster.ConvertToClusters(clusters)
 	if err != nil {
-		logrus.Fatalf("failed to unmarshal state file, msg: %v\n", err)
-	}
-	var p providers.Provider
-	kubeCfg := fmt.Sprintf("%s/%s", common.CfgPath, common.KubeCfgFile)
-	filters := []*types.ClusterInfo{}
-	for _, r := range result {
-		p, err = c.GetProviderByState(r)
-		if err != nil {
-			logrus.Errorf("failed to convert cluster options for cluster %s", r.Name)
-			continue
-		}
-		isExist, _, err := p.IsClusterExist()
-		if err != nil {
-			logrus.Errorf("failed to check cluster %s exist, got error: %v ", r.Name, err)
-			continue
-		}
-		if !isExist {
-			logrus.Warnf("cluster %s is not exist, will remove from config", r.Name)
-			// remove kube config if cluster not exist
-			if err := cluster.OverwriteCfg(r.Name); err != nil {
-				logrus.Errorf("failed to remove unexist cluster %s from kube config", r.Name)
-			}
-			if err := cluster.DeleteState(r.Name, r.Provider); err != nil {
-				logrus.Errorf("failed to remove unexist cluster %s from state: %v", r.Name, err)
-			}
-			continue
-		}
-		filters = append(filters, p.GetCluster(kubeCfg))
+		logrus.Fatalf("list cluster error %v \n", err)
 	}
 
 	for _, f := range filters {
