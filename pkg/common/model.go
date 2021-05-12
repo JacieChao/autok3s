@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/cnrancher/autok3s/pkg/providers"
 	"github.com/cnrancher/autok3s/pkg/types"
@@ -15,6 +16,7 @@ import (
 
 type ClusterState struct {
 	types.Metadata `json:",inline" mapstructure:",squash" gorm:"embedded"`
+	TLSSans        string `json:"tls-sans,omitempty" yaml:"tls-sans,omitempty" gorm:"type:text"`
 	Options        []byte `json:"options,omitempty" gorm:"type:bytes"`
 	Status         string `json:"status" yaml:"status"`
 	MasterNodes    []byte `json:"master-nodes,omitempty" gorm:"type:bytes"`
@@ -24,6 +26,7 @@ type ClusterState struct {
 
 type Template struct {
 	types.Metadata `json:",inline" mapstructure:",squash" gorm:"embedded"`
+	TLSSans        string `json:"tls-sans,omitempty" yaml:"tls-sans,omitempty" gorm:"type:text"`
 	Options        []byte `json:"options,omitempty" gorm:"type:bytes"`
 	types.SSH      `json:",inline" mapstructure:",squash" gorm:"embedded"`
 	IsDefault      bool `json:"is-default" gorm:"type:bool"`
@@ -173,6 +176,11 @@ func toCluster(state *ClusterState) types.Cluster {
 			Status: state.Status,
 		},
 	}
+
+	if state.TLSSans != "" {
+		c.Metadata.TLSSans = strings.Split(state.TLSSans, ",")
+	}
+
 	p, err := providers.GetProvider(state.Provider)
 	if err != nil {
 		logrus.Errorf("failed to get provider by name %s", state.Provider)
@@ -247,6 +255,10 @@ func (d *Store) SaveCluster(cluster *types.Cluster) error {
 		MasterNodes: masterNodeBytes,
 		WorkerNodes: workerNodeBytes,
 		SSH:         cluster.SSH,
+	}
+
+	if len(cluster.TLSSans) > 0 {
+		state.TLSSans = strings.Join(cluster.TLSSans, ",")
 	}
 
 	if result.RowsAffected == 0 {

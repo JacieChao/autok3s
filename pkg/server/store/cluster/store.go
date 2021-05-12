@@ -3,6 +3,7 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/cnrancher/autok3s/pkg/cluster"
 	"github.com/cnrancher/autok3s/pkg/common"
@@ -95,6 +96,9 @@ func (c *Store) ByID(apiOp *types.APIRequest, schema *types.APISchema, id string
 		Metadata: state.Metadata,
 		Options:  opt,
 		SSH:      state.SSH,
+	}
+	if state.TLSSans != "" {
+		obj.Metadata.TLSSans = strings.Split(state.TLSSans, ",")
 	}
 	return types.APIObject{
 		Type:   schema.ID,

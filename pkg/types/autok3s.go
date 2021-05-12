@@ -13,29 +13,30 @@ type Cluster struct {
 }
 
 type Metadata struct {
-	Name            string `json:"name" yaml:"name"`
-	Provider        string `json:"provider" yaml:"provider"`
-	Master          string `json:"master" yaml:"master"`
-	Worker          string `json:"worker" yaml:"worker"`
-	Token           string `json:"token,omitempty" yaml:"token,omitempty"`
-	IP              string `json:"ip,omitempty" yaml:"ip,omitempty"`
-	ClusterCidr     string `json:"cluster-cidr,omitempty" yaml:"cluster-cidr,omitempty"`
-	MasterExtraArgs string `json:"master-extra-args,omitempty" yaml:"master-extra-args,omitempty"`
-	WorkerExtraArgs string `json:"worker-extra-args,omitempty" yaml:"worker-extra-args,omitempty"`
-	Registry        string `json:"registry,omitempty" yaml:"registry,omitempty"`
-	DataStore       string `json:"datastore,omitempty" yaml:"datastore,omitempty"`
-	K3sVersion      string `json:"k3s-version,omitempty" yaml:"k3s-version,omitempty"`
-	K3sChannel      string `json:"k3s-channel,omitempty" yaml:"k3s-channel,omitempty"`
-	InstallScript   string `json:"k3s-install-script,omitempty" yaml:"k3s-install-script,omitempty"`
-	Mirror          string `json:"k3s-install-mirror,omitempty" yaml:"k3s-install-mirror,omitempty"`
-	DockerMirror    string `json:"dockerMirror,omitempty" yaml:"dockerMirror,omitempty"`
-	DockerScript    string `json:"dockerScript,omitempty" yaml:"dockerScript,omitempty"`
-	Network         string `json:"network,omitempty" yaml:"network,omitempty"`
-	UI              bool   `json:"ui" yaml:"ui"`
-	Cluster         bool   `json:"cluster" yaml:"cluster"`
-	ContextName     string `json:"context-name" yaml:"context-name"`
-	RegistryContent string `json:"registry-content,omitempty" yaml:"registry-content,omitempty"`
-	Manifests       string `json:"manifests,omitempty" yaml:"manifests,omitempty"`
+	Name            string   `json:"name" yaml:"name"`
+	Provider        string   `json:"provider" yaml:"provider"`
+	Master          string   `json:"master" yaml:"master"`
+	Worker          string   `json:"worker" yaml:"worker"`
+	Token           string   `json:"token,omitempty" yaml:"token,omitempty"`
+	IP              string   `json:"ip,omitempty" yaml:"ip,omitempty"`
+	TLSSans         []string `json:"tls-sans,omitempty" yaml:"tls-sans,omitempty" gorm:"-" sql:"-"`
+	ClusterCidr     string   `json:"cluster-cidr,omitempty" yaml:"cluster-cidr,omitempty"`
+	MasterExtraArgs string   `json:"master-extra-args,omitempty" yaml:"master-extra-args,omitempty"`
+	WorkerExtraArgs string   `json:"worker-extra-args,omitempty" yaml:"worker-extra-args,omitempty"`
+	Registry        string   `json:"registry,omitempty" yaml:"registry,omitempty"`
+	DataStore       string   `json:"datastore,omitempty" yaml:"datastore,omitempty"`
+	K3sVersion      string   `json:"k3s-version,omitempty" yaml:"k3s-version,omitempty"`
+	K3sChannel      string   `json:"k3s-channel,omitempty" yaml:"k3s-channel,omitempty"`
+	InstallScript   string   `json:"k3s-install-script,omitempty" yaml:"k3s-install-script,omitempty"`
+	Mirror          string   `json:"k3s-install-mirror,omitempty" yaml:"k3s-install-mirror,omitempty"`
+	DockerMirror    string   `json:"dockerMirror,omitempty" yaml:"dockerMirror,omitempty"`
+	DockerScript    string   `json:"dockerScript,omitempty" yaml:"dockerScript,omitempty"`
+	Network         string   `json:"network,omitempty" yaml:"network,omitempty"`
+	UI              bool     `json:"ui" yaml:"ui"`
+	Cluster         bool     `json:"cluster" yaml:"cluster"`
+	ContextName     string   `json:"context-name" yaml:"context-name"`
+	RegistryContent string   `json:"registry-content,omitempty" yaml:"registry-content,omitempty"`
+	Manifests       string   `json:"manifests,omitempty" yaml:"manifests,omitempty"`
 }
 
 type Status struct {

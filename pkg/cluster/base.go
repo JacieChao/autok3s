@@ -164,6 +164,12 @@ func (p *ProviderBase) GetClusterOptions() []types.Flag {
 			Usage: "K3s token, if empty will automatically generated, see: https://rancher.com/docs/k3s/latest/en/installation/install-options/server-config/#cluster-options",
 		},
 		{
+			Name:  "tls-sans",
+			P:     &p.TLSSans,
+			V:     p.TLSSans,
+			Usage: "Add additional hostnames or IPv4/IPv6 addresses as Subject Alternative Names on the server TLS cert, e.g.(--tls-sans 192.168.1.10 --tls-sans 192.168.2.10)",
+		},
+		{
 			Name:  "master",
 			P:     &p.Master,
 			V:     p.Master,
@@ -416,6 +422,10 @@ func (p *ProviderBase) JoinNodes(cloudInstanceFunc func(ssh *types.SSH) (*types.
 
 	p.syncExistNodes()
 	c.Status = p.Status
+
+	if state.TLSSans != "" {
+		c.TLSSans = strings.Split(state.TLSSans, ",")
+	}
 
 	added := &types.Cluster{
 		Metadata: c.Metadata,

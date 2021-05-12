@@ -45,6 +45,9 @@ func (t *Store) Create(apiOp *types.APIRequest, schema *types.APISchema, data ty
 		Options:   opt,
 		IsDefault: template.IsDefault,
 	}
+	if len(template.TLSSans) > 0 {
+		temp.TLSSans = strings.Join(template.TLSSans, ",")
+	}
 	err = common.DefaultDB.CreateTemplate(temp)
 	if err != nil {
 		return types.APIObject{}, err
@@ -64,6 +67,9 @@ func (t *Store) List(apiOp *types.APIRequest, schema *types.APISchema) (types.AP
 			Metadata:  template.Metadata,
 			SSH:       template.SSH,
 			IsDefault: template.IsDefault,
+		}
+		if template.TLSSans != "" {
+			temp.Metadata.TLSSans = strings.Split(template.TLSSans, ",")
 		}
 		provider, err := providers.GetProvider(template.Provider)
 		if err != nil {
@@ -102,6 +108,9 @@ func (t *Store) ByID(apiOp *types.APIRequest, schema *types.APISchema, id string
 		SSH:       template.SSH,
 		IsDefault: template.IsDefault,
 	}
+	if template.TLSSans != "" {
+		temp.Metadata.TLSSans = strings.Split(template.TLSSans, ",")
+	}
 	provider, err := providers.GetProvider(template.Provider)
 	if err != nil {
 		return types.APIObject{}, apierror.NewAPIError(validation.NotFound, err.Error())
@@ -128,6 +137,9 @@ func (t *Store) Update(apiOp *types.APIRequest, schema *types.APISchema, data ty
 		Metadata:  template.Metadata,
 		SSH:       template.SSH,
 		IsDefault: template.IsDefault,
+	}
+	if len(template.TLSSans) > 0 {
+		temp.TLSSans = strings.Join(template.TLSSans, ",")
 	}
 	temp.ContextName = fmt.Sprintf("%s.%s", template.Name, template.Provider)
 	opt, err := json.Marshal(template.Options)
