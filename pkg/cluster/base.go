@@ -423,9 +423,9 @@ func (p *ProviderBase) JoinNodes(cloudInstanceFunc func(ssh *types.SSH) (*types.
 	p.syncExistNodes()
 	c.Status = p.Status
 
-	if state.TLSSans != "" {
-		c.TLSSans = strings.Split(state.TLSSans, ",")
-	}
+	//if state.TLSSans != "" {
+	//	c.TLSSans = strings.Split(state.TLSSans, ",")
+	//}
 
 	added := &types.Cluster{
 		Metadata: c.Metadata,

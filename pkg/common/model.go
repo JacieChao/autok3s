@@ -3,7 +3,6 @@ package common
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"github.com/cnrancher/autok3s/pkg/providers"
 	"github.com/cnrancher/autok3s/pkg/types"
@@ -16,20 +15,20 @@ import (
 
 type ClusterState struct {
 	types.Metadata `json:",inline" mapstructure:",squash" gorm:"embedded"`
-	TLSSans        string `json:"tls-sans,omitempty" yaml:"tls-sans,omitempty" gorm:"type:text"`
-	Options        []byte `json:"options,omitempty" gorm:"type:bytes"`
-	Status         string `json:"status" yaml:"status"`
-	MasterNodes    []byte `json:"master-nodes,omitempty" gorm:"type:bytes"`
-	WorkerNodes    []byte `json:"worker-nodes,omitempty" gorm:"type:bytes"`
-	types.SSH      `json:",inline" mapstructure:",squash" gorm:"embedded"`
+	//TLSSans        string `json:"tls-sans,omitempty" yaml:"tls-sans,omitempty" gorm:"type:text"`
+	Options     []byte `json:"options,omitempty" gorm:"type:bytes"`
+	Status      string `json:"status" yaml:"status"`
+	MasterNodes []byte `json:"master-nodes,omitempty" gorm:"type:bytes"`
+	WorkerNodes []byte `json:"worker-nodes,omitempty" gorm:"type:bytes"`
+	types.SSH   `json:",inline" mapstructure:",squash" gorm:"embedded"`
 }
 
 type Template struct {
 	types.Metadata `json:",inline" mapstructure:",squash" gorm:"embedded"`
-	TLSSans        string `json:"tls-sans,omitempty" yaml:"tls-sans,omitempty" gorm:"type:text"`
-	Options        []byte `json:"options,omitempty" gorm:"type:bytes"`
-	types.SSH      `json:",inline" mapstructure:",squash" gorm:"embedded"`
-	IsDefault      bool `json:"is-default" gorm:"type:bool"`
+	//TLSSans        string `json:"tls-sans,omitempty" yaml:"tls-sans,omitempty" gorm:"type:text"`
+	Options   []byte `json:"options,omitempty" gorm:"type:bytes"`
+	types.SSH `json:",inline" mapstructure:",squash" gorm:"embedded"`
+	IsDefault bool `json:"is-default" gorm:"type:bool"`
 }
 
 type Credential struct {
@@ -177,9 +176,9 @@ func toCluster(state *ClusterState) types.Cluster {
 		},
 	}
 
-	if state.TLSSans != "" {
-		c.Metadata.TLSSans = strings.Split(state.TLSSans, ",")
-	}
+	//if state.TLSSans != "" {
+	//	c.Metadata.TLSSans = strings.Split(state.TLSSans, ",")
+	//}
 
 	p, err := providers.GetProvider(state.Provider)
 	if err != nil {
@@ -257,9 +256,9 @@ func (d *Store) SaveCluster(cluster *types.Cluster) error {
 		SSH:         cluster.SSH,
 	}
 
-	if len(cluster.TLSSans) > 0 {
-		state.TLSSans = strings.Join(cluster.TLSSans, ",")
-	}
+	//if len(cluster.TLSSans) > 0 {
+	//	state.TLSSans = strings.Join(cluster.TLSSans, ",")
+	//}
 
 	if result.RowsAffected == 0 {
 		// create cluster

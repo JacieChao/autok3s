@@ -39,15 +39,16 @@ func (t *Store) Create(apiOp *types.APIRequest, schema *types.APISchema, data ty
 	if err != nil {
 		return types.APIObject{}, err
 	}
+	logrus.Infof("====== get tls-sans %v", template.Metadata.TLSSans)
 	temp = &common.Template{
 		Metadata:  template.Metadata,
 		SSH:       template.SSH,
 		Options:   opt,
 		IsDefault: template.IsDefault,
 	}
-	if len(template.TLSSans) > 0 {
-		temp.TLSSans = strings.Join(template.TLSSans, ",")
-	}
+	//if len(template.TLSSans) > 0 {
+	//	temp.TLSSans = strings.Join(template.TLSSans, ",")
+	//}
 	err = common.DefaultDB.CreateTemplate(temp)
 	if err != nil {
 		return types.APIObject{}, err
@@ -63,14 +64,15 @@ func (t *Store) List(apiOp *types.APIRequest, schema *types.APISchema) (types.AP
 	}
 
 	for _, template := range templates {
+		logrus.Infof("===== get tls-sans %v", template.TLSSans)
 		temp := &apis.ClusterTemplate{
 			Metadata:  template.Metadata,
 			SSH:       template.SSH,
 			IsDefault: template.IsDefault,
 		}
-		if template.TLSSans != "" {
-			temp.Metadata.TLSSans = strings.Split(template.TLSSans, ",")
-		}
+		//if template.TLSSans != "" {
+		//	temp.Metadata.TLSSans = strings.Split(template.TLSSans, ",")
+		//}
 		provider, err := providers.GetProvider(template.Provider)
 		if err != nil {
 			logrus.Errorf("failed to get provider by name %s: %v", template.Provider, err)
@@ -108,9 +110,9 @@ func (t *Store) ByID(apiOp *types.APIRequest, schema *types.APISchema, id string
 		SSH:       template.SSH,
 		IsDefault: template.IsDefault,
 	}
-	if template.TLSSans != "" {
-		temp.Metadata.TLSSans = strings.Split(template.TLSSans, ",")
-	}
+	//if template.TLSSans != "" {
+	//	temp.Metadata.TLSSans = strings.Split(template.TLSSans, ",")
+	//}
 	provider, err := providers.GetProvider(template.Provider)
 	if err != nil {
 		return types.APIObject{}, apierror.NewAPIError(validation.NotFound, err.Error())
@@ -133,14 +135,15 @@ func (t *Store) Update(apiOp *types.APIRequest, schema *types.APISchema, data ty
 	if err != nil {
 		return types.APIObject{}, err
 	}
+	logrus.Infof("====== get tls-sans %v", template.Metadata.TLSSans)
 	temp := &common.Template{
 		Metadata:  template.Metadata,
 		SSH:       template.SSH,
 		IsDefault: template.IsDefault,
 	}
-	if len(template.TLSSans) > 0 {
-		temp.TLSSans = strings.Join(template.TLSSans, ",")
-	}
+	//if len(template.TLSSans) > 0 {
+	//	temp.TLSSans = strings.Join(template.TLSSans, ",")
+	//}
 	temp.ContextName = fmt.Sprintf("%s.%s", template.Name, template.Provider)
 	opt, err := json.Marshal(template.Options)
 	if err != nil {

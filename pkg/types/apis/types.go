@@ -43,7 +43,6 @@ type Logs struct {
 type ClusterTemplate struct {
 	types.Metadata `json:",inline" mapstructure:",squash"`
 	types.SSH      `json:",inline"`
-	TLSSans        []string    `json:"tls-sans,omitempty" yaml:"tls-sans,omitempty" gorm:"type:text"`
 	Options        interface{} `json:"options,omitempty"`
 	IsDefault      bool        `json:"is-default"`
 }
