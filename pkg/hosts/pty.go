@@ -93,6 +93,7 @@ func (d *PtyDialer) Wait() error {
 	return d.cmd.Wait()
 }
 
+// Write
 func (d *PtyDialer) Write(b []byte) error {
 	_, err := d.conn.Write(b)
 	return err

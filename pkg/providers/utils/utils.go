@@ -18,6 +18,7 @@ const specialChars = "()`~!@#$%^&*-+=|{}[]:;'<>,.?/"
 const dictionary = digital + alphabet + specialChars
 const passwordLen = 16
 
+// RandomPassword generate random password
 func RandomPassword() string {
 	var bytes = make([]byte, passwordLen)
 	_, _ = rand.Read(bytes)
@@ -39,6 +40,7 @@ func RandomPassword() string {
 	return string(bytes)
 }
 
+// IsExistedNodes check instance is in the node list
 func IsExistedNodes(nodes []types.Node, instance string) (int, bool) {
 	for index, n := range nodes {
 		if n.InstanceID == instance {
@@ -49,6 +51,7 @@ func IsExistedNodes(nodes []types.Node, instance string) (int, bool) {
 	return -1, false
 }
 
+// CreateKeyPair generate ssh key-pair
 func CreateKeyPair(ssh *types.SSH, providerName, name, keypair string) ([]byte, error) {
 	var keyPath string
 	if ssh.SSHKeyPath == "" && keypair == "" {

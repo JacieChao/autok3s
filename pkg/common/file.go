@@ -18,10 +18,12 @@ var (
 	maxWait      = 10 * time.Second
 )
 
+// ConfigFileManager provide file rw lock for save kube-config file
 type ConfigFileManager struct {
 	mutex sync.RWMutex
 }
 
+// OverwriteCfg save context for kube-config file with rw lock
 func (c *ConfigFileManager) OverwriteCfg(path string, context string, cfg func(string, clientcmd.ConfigAccess) (*api.Config, error)) error {
 	paOpt := clientcmd.NewDefaultPathOptions()
 
@@ -55,6 +57,7 @@ func (c *ConfigFileManager) OverwriteCfg(path string, context string, cfg func(s
 	return fmt.Errorf("timeout for wait config file %v unlock", path)
 }
 
+// RemoveCfg will remove specified context from kube-config file with rw lock
 func (c *ConfigFileManager) RemoveCfg(context string, configAccess clientcmd.ConfigAccess) (*api.Config, error) {
 	config, err := configAccess.GetStartingConfig()
 	if err != nil {
@@ -77,6 +80,7 @@ func (c *ConfigFileManager) RemoveCfg(context string, configAccess clientcmd.Con
 	return config, nil
 }
 
+// MergeCfg will merge kube-config file with rw lock
 func (c *ConfigFileManager) MergeCfg(context string, configAccess clientcmd.ConfigAccess) (*api.Config, error) {
 	// check context exists
 	oldConfig, err := clientcmd.LoadFromFile(fmt.Sprintf("%s/%s", CfgPath, KubeCfgFile))

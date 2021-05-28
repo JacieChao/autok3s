@@ -38,6 +38,7 @@ const sshUsageExample = `  autok3s ssh \
     --secret-key <secret-key>
 `
 
+// GetUsageExample returns cli usage example for tencent provider
 func (p *Tencent) GetUsageExample(action string) string {
 	switch action {
 	case "create":
@@ -53,6 +54,7 @@ func (p *Tencent) GetUsageExample(action string) string {
 	}
 }
 
+// GetCreateFlags return create flags for tencent provider
 func (p *Tencent) GetCreateFlags() []types.Flag {
 	cSSH := p.GetSSHConfig()
 	p.SSH = *cSSH
@@ -61,16 +63,19 @@ func (p *Tencent) GetCreateFlags() []types.Flag {
 	return fs
 }
 
+// GetOptionFlags return flags for option
 func (p *Tencent) GetOptionFlags() []types.Flag {
 	return p.sharedFlags()
 }
 
+// GetJoinFlags return join flags for tencent provider
 func (p *Tencent) GetJoinFlags() []types.Flag {
 	fs := p.sharedFlags()
 	fs = append(fs, p.GetClusterOptions()...)
 	return fs
 }
 
+// GetSSHFlags return ssh flags for tencent provider
 func (p *Tencent) GetSSHFlags() []types.Flag {
 	fs := []types.Flag{
 		{
@@ -95,6 +100,7 @@ func (p *Tencent) GetSSHFlags() []types.Flag {
 	return fs
 }
 
+// GetDeleteFlags return delete flags for tencent provider
 func (p *Tencent) GetDeleteFlags() []types.Flag {
 	return []types.Flag{
 		{
@@ -115,6 +121,7 @@ func (p *Tencent) GetDeleteFlags() []types.Flag {
 	}
 }
 
+// MergeClusterOptions merge cluster options with default value
 func (p *Tencent) MergeClusterOptions() error {
 	opt, err := p.MergeConfig()
 	if err != nil {
@@ -134,6 +141,7 @@ func (p *Tencent) MergeClusterOptions() error {
 	return nil
 }
 
+// GetCredentialFlags return credential flags for tencent provider
 func (p *Tencent) GetCredentialFlags() []types.Flag {
 	fs := []types.Flag{
 		{
@@ -157,6 +165,7 @@ func (p *Tencent) GetCredentialFlags() []types.Flag {
 	return fs
 }
 
+// GetSSHConfig return default ssh config for tencent provider
 func (p *Tencent) GetSSHConfig() *types.SSH {
 	ssh := &types.SSH{
 		SSHUser: defaultUser,
@@ -165,6 +174,7 @@ func (p *Tencent) GetSSHConfig() *types.SSH {
 	return ssh
 }
 
+// BindCredential persistent credential from flags to db.
 func (p *Tencent) BindCredential() error {
 	secretMap := map[string]string{
 		secretID:  p.SecretID,

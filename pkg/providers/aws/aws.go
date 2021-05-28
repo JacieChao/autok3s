@@ -79,15 +79,13 @@ func newProvider() *Amazon {
 	}
 }
 
-func (p *Amazon) GetProviderName() string {
-	return p.Provider
-}
-
+// GenerateClusterName generate cluster id
 func (p *Amazon) GenerateClusterName() string {
 	p.ContextName = fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
 	return p.ContextName
 }
 
+// GenerateManifest generate CCM manifest for aws provider
 func (p *Amazon) GenerateManifest() []string {
 	if p.CloudControllerManager {
 		return []string{fmt.Sprintf(deployCCMCommand,
@@ -96,6 +94,7 @@ func (p *Amazon) GenerateManifest() []string {
 	return nil
 }
 
+// CreateK3sCluster create K3s cluster by aws provider
 func (p *Amazon) CreateK3sCluster() (err error) {
 	if p.SSHUser == "" {
 		p.SSHUser = defaultUser
@@ -103,6 +102,7 @@ func (p *Amazon) CreateK3sCluster() (err error) {
 	return p.InitCluster(p.Options, p.GenerateManifest, p.generateInstance, nil, p.rollbackInstance)
 }
 
+// JoinK3sNode join nodes for cluster managed by aws provider
 func (p *Amazon) JoinK3sNode() (err error) {
 	if p.SSHUser == "" {
 		p.SSHUser = defaultUser
@@ -110,10 +110,12 @@ func (p *Amazon) JoinK3sNode() (err error) {
 	return p.JoinNodes(p.generateInstance, p.syncInstances, false, p.rollbackInstance)
 }
 
+// DeleteK3sCluster remove cluster and instances at EC2
 func (p *Amazon) DeleteK3sCluster(f bool) (err error) {
 	return p.DeleteCluster(f, p.deleteInstance)
 }
 
+// SSHK3sNode ssh to specified EC2 node
 func (p *Amazon) SSHK3sNode(ip string) error {
 	c := &types.Cluster{
 		Metadata: p.Metadata,
@@ -127,6 +129,7 @@ func (p *Amazon) isInstanceRunning(state string) bool {
 	return state == ec2.InstanceStateNameRunning
 }
 
+// IsClusterExist check cluster exists
 func (p *Amazon) IsClusterExist() (bool, []string, error) {
 	ids := make([]string, 0)
 
@@ -149,6 +152,7 @@ func (p *Amazon) IsClusterExist() (bool, []string, error) {
 	return len(ids) > 0, ids, nil
 }
 
+// GenerateMasterExtraArgs generate master-extra-args for aws CCM
 func (p *Amazon) GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string {
 	if option, ok := cluster.Options.(typesaws.Options); ok {
 		if option.CloudControllerManager {
@@ -158,10 +162,12 @@ func (p *Amazon) GenerateMasterExtraArgs(cluster *types.Cluster, master types.No
 	return ""
 }
 
+// GenerateWorkerExtraArgs generate worker-extra-args for aws CCM
 func (p *Amazon) GenerateWorkerExtraArgs(cluster *types.Cluster, worker types.Node) string {
 	return p.GenerateMasterExtraArgs(cluster, worker)
 }
 
+// SetOptions merge options with default option value
 func (p *Amazon) SetOptions(opt []byte) error {
 	sourceOption := reflect.ValueOf(&p.Options).Elem()
 	option := &typesaws.Options{}
@@ -174,6 +180,7 @@ func (p *Amazon) SetOptions(opt []byte) error {
 	return nil
 }
 
+// GetCluster get cluster information
 func (p *Amazon) GetCluster(kubecfg string) *types.ClusterInfo {
 	c := &types.ClusterInfo{
 		ID:       p.ContextName,
@@ -188,6 +195,7 @@ func (p *Amazon) GetCluster(kubecfg string) *types.ClusterInfo {
 	return p.GetClusterStatus(kubecfg, c, p.getInstanceNodes)
 }
 
+// DescribeCluster
 func (p *Amazon) DescribeCluster(kubecfg string) *types.ClusterInfo {
 	c := &types.ClusterInfo{
 		Name:     p.Name,
@@ -198,12 +206,14 @@ func (p *Amazon) DescribeCluster(kubecfg string) *types.ClusterInfo {
 	return p.Describe(kubecfg, c, p.getInstanceNodes)
 }
 
+// GetProviderOptions returns aws provider option value
 func (p *Amazon) GetProviderOptions(opt []byte) (interface{}, error) {
 	options := &typesaws.Options{}
 	err := json.Unmarshal(opt, options)
 	return options, err
 }
 
+// SetConfig merge flags with default flag value
 func (p *Amazon) SetConfig(config []byte) error {
 	c, err := p.SetClusterConfig(config)
 	if err != nil {
@@ -225,6 +235,7 @@ func (p *Amazon) SetConfig(config []byte) error {
 	return nil
 }
 
+// Rollback instance when something gets wrong
 func (p *Amazon) Rollback() error {
 	return p.RollbackCluster(p.rollbackInstance)
 }
@@ -645,6 +656,7 @@ func (p *Amazon) describeInstances() ([]*ec2.Instance, error) {
 	return instanceList, nil
 }
 
+// CreateCheck will valid flags before create
 func (p *Amazon) CreateCheck() error {
 	if p.KeypairName != "" && p.SSHKeyPath == "" {
 		return fmt.Errorf("[%s] calling preflight error: must set --ssh-key-path with --keypair-name %s", p.GetProviderName(), p.KeypairName)
@@ -789,6 +801,7 @@ func (p *Amazon) CreateCheck() error {
 	return nil
 }
 
+// JoinCheck will valid flags before join
 func (p *Amazon) JoinCheck() error {
 	// check cluster exist
 	exist, _, err := p.IsClusterExist()

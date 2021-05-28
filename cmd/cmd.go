@@ -48,6 +48,7 @@ func init() {
 	cmd.PersistentFlags().BoolVarP(&common.Debug, "debug", "d", common.Debug, "Enable log debug level")
 }
 
+// Command returns commands for autok3s cli
 func Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		printASCII()

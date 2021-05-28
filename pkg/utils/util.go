@@ -25,6 +25,7 @@ const (
 `
 )
 
+// RandomToken generate random token for K3s
 func RandomToken(size int) (string, error) {
 	token := make([]byte, size)
 	_, err := rand.Read(token)
@@ -34,6 +35,7 @@ func RandomToken(size int) (string, error) {
 	return hex.EncodeToString(token), err
 }
 
+// UniqueArray keep unique object in an array
 func UniqueArray(origin []string) (unique []string) {
 	unique = make([]string, 0)
 	for i := 0; i < len(origin); i++ {
@@ -51,6 +53,7 @@ func UniqueArray(origin []string) (unique []string) {
 	return
 }
 
+// AskForConfirmation ask for user confirmation
 func AskForConfirmation(s string) bool {
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -68,6 +71,7 @@ func AskForConfirmation(s string) bool {
 	}
 }
 
+// AskForSelectItem ask for user to select a item
 func AskForSelectItem(s string, ss map[string]string) string {
 	reader := bufio.NewReader(os.Stdin)
 	t := template.New("tmpl")
@@ -87,6 +91,7 @@ func AskForSelectItem(s string, ss map[string]string) string {
 	return ss[strings.ToLower(strings.TrimSpace(response))]
 }
 
+// WaitFor will wait for function to return an expect status
 func WaitFor(fn func() (bool, error)) error {
 	// retry 5 times, total 120 seconds.
 	backoff := wait.Backoff{
@@ -97,6 +102,7 @@ func WaitFor(fn func() (bool, error)) error {
 	return WaitForBackoff(fn, backoff)
 }
 
+// WaitForBackoff will wait for function to return an expect status in specified backoff
 func WaitForBackoff(fn func() (bool, error), backoff wait.Backoff) error {
 	if err := wait.ExponentialBackoff(backoff, func() (bool, error) {
 		return fn()
@@ -106,6 +112,7 @@ func WaitForBackoff(fn func() (bool, error), backoff wait.Backoff) error {
 	return nil
 }
 
+// ConvertToFields convert object to schema fields
 func ConvertToFields(obj interface{}) (map[string]schemas.Field, error) {
 	t := reflect.TypeOf(obj)
 	if t.Kind() == reflect.Ptr {
@@ -130,6 +137,7 @@ func ConvertToFields(obj interface{}) (map[string]schemas.Field, error) {
 	return fields, nil
 }
 
+// MergeConfig merge non-empty target object value to source object
 func MergeConfig(source, target reflect.Value) {
 	if source.Kind() == reflect.Ptr {
 		source = source.Elem()

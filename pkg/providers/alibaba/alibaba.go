@@ -99,15 +99,13 @@ func newProvider() *Alibaba {
 	}
 }
 
-func (p *Alibaba) GetProviderName() string {
-	return p.Provider
-}
-
+// GenerateClusterName generate cluster id
 func (p *Alibaba) GenerateClusterName() string {
 	p.ContextName = fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
 	return p.ContextName
 }
 
+// GenerateManifest generate CCM/Terway manifests for alibaba provider
 func (p *Alibaba) GenerateManifest() []string {
 	extraManifests := make([]string, 0)
 	if strings.EqualFold(p.Terway, "eni") {
@@ -140,6 +138,7 @@ func (p *Alibaba) GenerateManifest() []string {
 	return extraManifests
 }
 
+// CreateK3sCluster create K3s cluster by alibaba provider
 func (p *Alibaba) CreateK3sCluster() (err error) {
 	if p.SSHUser == "" {
 		p.SSHUser = defaultUser
@@ -147,6 +146,7 @@ func (p *Alibaba) CreateK3sCluster() (err error) {
 	return p.InitCluster(p.Options, p.GenerateManifest, p.generateInstance, nil, p.rollbackInstance)
 }
 
+// JoinK3sNode join nodes for cluster managed by alibaba provider
 func (p *Alibaba) JoinK3sNode() (err error) {
 	if p.SSHUser == "" {
 		p.SSHUser = defaultUser
@@ -154,6 +154,7 @@ func (p *Alibaba) JoinK3sNode() (err error) {
 	return p.JoinNodes(p.generateInstance, func() error { return nil }, false, p.rollbackInstance)
 }
 
+// Rollback instance when something gets wrong
 func (p *Alibaba) Rollback() error {
 	return p.RollbackCluster(p.rollbackInstance)
 }
@@ -190,10 +191,12 @@ func (p *Alibaba) rollbackInstance(ids []string) error {
 	return nil
 }
 
+// DeleteK3sCluster remove cluster and instances at ECS
 func (p *Alibaba) DeleteK3sCluster(f bool) error {
 	return p.DeleteCluster(f, p.deleteInstance)
 }
 
+// SSHK3sNode ssh to specified ECS node
 func (p *Alibaba) SSHK3sNode(ip string) error {
 	c := &types.Cluster{
 		Metadata: p.Metadata,
@@ -203,6 +206,7 @@ func (p *Alibaba) SSHK3sNode(ip string) error {
 	return p.Connect(ip, &p.SSH, c, p.getInstanceNodes, p.isInstanceRunning, nil)
 }
 
+// IsClusterExist check cluster exists
 func (p *Alibaba) IsClusterExist() (bool, []string, error) {
 	ids := make([]string, 0)
 
@@ -238,6 +242,7 @@ func (p *Alibaba) IsClusterExist() (bool, []string, error) {
 	return false, nil, nil
 }
 
+// GenerateMasterExtraArgs generate master-extra-args for alibaba CCM
 func (p *Alibaba) GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string {
 	if option, ok := cluster.Options.(alibaba.Options); ok {
 		if option.CloudControllerManager {
@@ -249,10 +254,12 @@ func (p *Alibaba) GenerateMasterExtraArgs(cluster *types.Cluster, master types.N
 	return ""
 }
 
+// GenerateWorkerExtraArgs generate worker-extra-args for alibaba CCM
 func (p *Alibaba) GenerateWorkerExtraArgs(cluster *types.Cluster, worker types.Node) string {
 	return p.GenerateMasterExtraArgs(cluster, worker)
 }
 
+// GetCluster get cluster information
 func (p *Alibaba) GetCluster(kubecfg string) *types.ClusterInfo {
 	c := &types.ClusterInfo{
 		ID:       p.ContextName,
@@ -268,6 +275,7 @@ func (p *Alibaba) GetCluster(kubecfg string) *types.ClusterInfo {
 	return p.GetClusterStatus(kubecfg, c, p.getInstanceNodes)
 }
 
+// DescribeCluster
 func (p *Alibaba) DescribeCluster(kubecfg string) *types.ClusterInfo {
 	c := &types.ClusterInfo{
 		Name:     p.Name,
@@ -278,6 +286,7 @@ func (p *Alibaba) DescribeCluster(kubecfg string) *types.ClusterInfo {
 	return p.Describe(kubecfg, c, p.getInstanceNodes)
 }
 
+// SetConfig merge flags with default flag value
 func (p *Alibaba) SetConfig(config []byte) error {
 	c, err := p.SetClusterConfig(config)
 	if err != nil {
@@ -299,6 +308,7 @@ func (p *Alibaba) SetConfig(config []byte) error {
 	return nil
 }
 
+// SetOptions merge options with default option value
 func (p *Alibaba) SetOptions(opt []byte) error {
 	sourceOption := reflect.ValueOf(&p.Options).Elem()
 	option := &alibaba.Options{}
@@ -311,6 +321,7 @@ func (p *Alibaba) SetOptions(opt []byte) error {
 	return nil
 }
 
+// GetProviderOptions returns alibaba provider option value
 func (p *Alibaba) GetProviderOptions(opt []byte) (interface{}, error) {
 	options := &alibaba.Options{}
 	err := json.Unmarshal(opt, options)
@@ -630,6 +641,7 @@ func (p *Alibaba) getVpcCIDR() (string, error) {
 	return response.Vpcs.Vpc[0].CidrBlock, nil
 }
 
+// CreateCheck will valid flags before create
 func (p *Alibaba) CreateCheck() error {
 	if p.KeyPair != "" && p.SSHKeyPath == "" {
 		return fmt.Errorf("[%s] calling preflight error: must set --ssh-key-path with --key-pair %s", p.GetProviderName(), p.KeyPair)
@@ -677,6 +689,7 @@ func (p *Alibaba) CreateCheck() error {
 	return nil
 }
 
+// JoinCheck will valid flags before join
 func (p *Alibaba) JoinCheck() error {
 	if p.Master == "0" && p.Worker == "0" {
 		return fmt.Errorf("[%s] calling preflight error: `--master` or `--worker` number must >= 1", p.GetProviderName())

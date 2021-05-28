@@ -39,6 +39,7 @@ const exampleStr = `
   $ autok3s completion fish > ~/.config/fish/completions/autok3s.fish
 `
 
+// completionCommand returns completion command for autok3s cli
 func CompletionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                   "completion [bash|zsh|fish|powershell]",

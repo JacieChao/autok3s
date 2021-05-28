@@ -27,6 +27,7 @@ func init() {
 	describeCmd.Flags().StringVarP(&name, "name", "n", name, "cluster name")
 }
 
+// DescribeCommand returns describe command for autok3s cli
 func DescribeCommand() *cobra.Command {
 	describeCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		if name == "" {

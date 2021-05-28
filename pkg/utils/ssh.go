@@ -15,6 +15,7 @@ import (
 
 const SSHAuthSock = "SSH_AUTH_SOCK"
 
+// SSHPrivateKeyPath return ssh private key path
 func SSHPrivateKeyPath(sshKey string) (string, error) {
 	if sshKey[:2] == "~/" {
 		sshKey = filepath.Join(UserHome(), sshKey[2:])
@@ -26,6 +27,7 @@ func SSHPrivateKeyPath(sshKey string) (string, error) {
 	return string(buff), nil
 }
 
+// SSHCertificatePath return ssh-cert file path
 func SSHCertificatePath(sshCertPath string) (string, error) {
 	if sshCertPath[:2] == "~/" {
 		sshCertPath = filepath.Join(UserHome(), sshCertPath[2:])
@@ -37,6 +39,7 @@ func SSHCertificatePath(sshCertPath string) (string, error) {
 	return string(buff), nil
 }
 
+// GetSSHConfig generate ssh config
 func GetSSHConfig(username, sshPrivateKeyString, passphrase, sshCert string, password string, timeout time.Duration, useAgentAuth bool) (*ssh.ClientConfig, error) {
 	config := &ssh.ClientConfig{
 		User:            username,

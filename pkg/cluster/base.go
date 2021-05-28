@@ -39,6 +39,8 @@ const (
 	dockerInstallScript = "https://get.docker.com"
 )
 
+// ProviderBase - Embed this struct into providers to provide the
+// common set of fields and functions
 type ProviderBase struct {
 	types.Metadata `json:",inline"`
 	types.Status   `json:"status"`
@@ -54,6 +56,7 @@ type providerProcess struct {
 	Fn          func(interface{})
 }
 
+// NewBaseProvider returns the default struct of base provider
 func NewBaseProvider() *ProviderBase {
 	return &ProviderBase{
 		Metadata: types.Metadata{
@@ -78,6 +81,12 @@ func NewBaseProvider() *ProviderBase {
 	}
 }
 
+// GetProviderName returns provider name
+func (p *ProviderBase) GetProviderName() string {
+	return p.Provider
+}
+
+// GetCreateOptions returns create flags for provider
 func (p *ProviderBase) GetCreateOptions() []types.Flag {
 	return []types.Flag{
 		{
@@ -101,6 +110,7 @@ func (p *ProviderBase) GetCreateOptions() []types.Flag {
 	}
 }
 
+// GetClusterOptions returns cluster type of flags for provider
 func (p *ProviderBase) GetClusterOptions() []types.Flag {
 	fs := []types.Flag{
 		{
@@ -190,6 +200,7 @@ func (p *ProviderBase) GetClusterOptions() []types.Flag {
 	return fs
 }
 
+// GetSSHOptions returns ssh flags for providers
 func (p *ProviderBase) GetSSHOptions() []types.Flag {
 	return []types.Flag{
 		{
@@ -237,6 +248,7 @@ func (p *ProviderBase) GetSSHOptions() []types.Flag {
 	}
 }
 
+// GetCommonConfig convert common config flags to API schema fields
 func (p *ProviderBase) GetCommonConfig(sshFunc func() *types.SSH) (map[string]schemas.Field, error) {
 	ssh := sshFunc()
 	sshConfig, err := utils.ConvertToFields(*ssh)
@@ -253,6 +265,7 @@ func (p *ProviderBase) GetCommonConfig(sshFunc func() *types.SSH) (map[string]sc
 	return metaConfig, nil
 }
 
+// InitCluster will install K3s by provider configs
 func (p *ProviderBase) InitCluster(options interface{}, deployPlugins func() []string,
 	cloudInstanceFunc func(ssh *types.SSH) (*types.Cluster, error), customInstallK3s func() (string, string, error), rollbackInstance func(ids []string) error) error {
 	logFile, err := common.GetLogFile(p.ContextName)
@@ -364,6 +377,7 @@ func (p *ProviderBase) InitCluster(options interface{}, deployPlugins func() []s
 	return nil
 }
 
+// JoinNodes will join K3s nodes to specified cluster
 func (p *ProviderBase) JoinNodes(cloudInstanceFunc func(ssh *types.SSH) (*types.Cluster, error),
 	syncExistInstance func() error, isAutoJoined bool, rollbackInstance func(ids []string) error) error {
 	if p.M == nil {
@@ -464,6 +478,7 @@ func (p *ProviderBase) JoinNodes(cloudInstanceFunc func(ssh *types.SSH) (*types.
 	return nil
 }
 
+// MergeConfig will merge provider flags with DB configs
 func (p *ProviderBase) MergeConfig() ([]byte, error) {
 	state, err := common.DefaultDB.GetCluster(p.Name, p.Provider)
 	if err != nil {
@@ -528,6 +543,7 @@ func (p *ProviderBase) overwriteMetadata(matched *common.ClusterState) {
 	}
 }
 
+// DeleteCluster will remove specified cluster
 func (p *ProviderBase) DeleteCluster(force bool, delete func(f bool) (string, error)) error {
 	isConfirmed := true
 
@@ -564,6 +580,7 @@ func (p *ProviderBase) DeleteCluster(force bool, delete func(f bool) (string, er
 	return nil
 }
 
+// GetClusterStatus returns the K3s cluster status, including K3s cluster status, K3s version and nodes number
 func (p *ProviderBase) GetClusterStatus(kubeCfg string, c *types.ClusterInfo, describeFunc func() ([]types.Node, error)) *types.ClusterInfo {
 	p.Logger = common.NewLogger(common.Debug, nil)
 
@@ -606,12 +623,14 @@ func (p *ProviderBase) GetClusterStatus(kubeCfg string, c *types.ClusterInfo, de
 	return c
 }
 
+// SetMetadata merge metadata flags from provider with default value
 func (p *ProviderBase) SetMetadata(config *types.Metadata) {
 	sourceMeta := reflect.ValueOf(&p.Metadata).Elem()
 	targetMeta := reflect.ValueOf(config).Elem()
 	utils.MergeConfig(sourceMeta, targetMeta)
 }
 
+// SetClusterConfig merge cluster flags with default value
 func (p *ProviderBase) SetClusterConfig(config []byte) (*types.Cluster, error) {
 	c := types.Cluster{}
 	err := json.Unmarshal(config, &c)
@@ -628,6 +647,7 @@ func (p *ProviderBase) SetClusterConfig(config []byte) (*types.Cluster, error) {
 	return &c, nil
 }
 
+// SaveCredential will save credential flags to DB
 func (p *ProviderBase) SaveCredential(secrets map[string]string) error {
 	cs, err := common.DefaultDB.GetCredentialByProvider(p.Provider)
 	if err != nil {
@@ -650,6 +670,7 @@ func (p *ProviderBase) SaveCredential(secrets map[string]string) error {
 	return nil
 }
 
+// ListClusters show all clusters managed by autok3s
 func ListClusters() ([]*types.ClusterInfo, error) {
 	stateList, err := common.DefaultDB.ListCluster()
 	if err != nil {
@@ -726,6 +747,7 @@ func (p *ProviderBase) syncExistNodes() {
 	})
 }
 
+// Describe the specified clusters, just like kubectl get nodes does
 func (p *ProviderBase) Describe(kubeCfg string, c *types.ClusterInfo, describeInstance func() ([]types.Node, error)) *types.ClusterInfo {
 	if kubeCfg == "" {
 		c.Status = common.StatusMissing
@@ -788,6 +810,7 @@ func (p *ProviderBase) Describe(kubeCfg string, c *types.ClusterInfo, describeIn
 	return c
 }
 
+// Connect will setup a ssh connection to a specified node
 func (p *ProviderBase) Connect(ip string, ssh *types.SSH, c *types.Cluster, getStatus func() ([]types.Node, error),
 	isRunning func(status string) bool, customConnect func(id string, cluster *types.Cluster) error) error {
 	p.Logger = common.NewLogger(common.Debug, nil)
@@ -850,6 +873,7 @@ func (p *ProviderBase) Connect(ip string, ssh *types.SSH, c *types.Cluster, getS
 	return nil
 }
 
+// RollbackCluster will rollback K3s install execution if something get wrong
 func (p *ProviderBase) RollbackCluster(rollbackInstance func(ids []string) error) error {
 	p.Logger.Infof("[%s] executing rollback logic...", p.Provider)
 	if rollbackInstance != nil {
@@ -878,6 +902,7 @@ func (p *ProviderBase) RollbackCluster(rollbackInstance func(ids []string) error
 	return nil
 }
 
+// ReleaseManifests will remove manifests which are deployed by autok3s
 func (p *ProviderBase) ReleaseManifests() error {
 	// remove ui manifest to release ELB.
 	masterIP := p.IP
@@ -903,6 +928,7 @@ func (p *ProviderBase) ReleaseManifests() error {
 	return nil
 }
 
+// GetCustomManifests uploads all manifest files from --manifest path
 func (p *ProviderBase) GetCustomManifests() ([]string, error) {
 	// check is folder or file.
 	info, err := os.Stat(p.Manifests)
@@ -940,6 +966,7 @@ func prepareManifestFile(path, name string) (string, error) {
 	return fmt.Sprintf(uploadManifestCmd, base64.StdEncoding.EncodeToString(manifestContent), common.K3sManifestsDir, name), nil
 }
 
+// RegisterCallbacks register callback functions for provider
 func (p *ProviderBase) RegisterCallbacks(name, event string, fn func(interface{})) {
 	if p.Callbacks == nil {
 		p.Callbacks = map[string]*providerProcess{}

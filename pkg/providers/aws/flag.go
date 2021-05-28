@@ -39,6 +39,7 @@ const sshUsageExample = `  autok3s ssh \
     --secret-key <secret-key>
 `
 
+// GetUsageExample returns cli usage example for aws provider
 func (p *Amazon) GetUsageExample(action string) string {
 	switch action {
 	case "create":
@@ -54,6 +55,7 @@ func (p *Amazon) GetUsageExample(action string) string {
 	}
 }
 
+// GetCreateFlags return create flags for aws provider
 func (p *Amazon) GetCreateFlags() []types.Flag {
 	cSSH := p.GetSSHConfig()
 	p.SSH = *cSSH
@@ -62,10 +64,12 @@ func (p *Amazon) GetCreateFlags() []types.Flag {
 	return fs
 }
 
+// GetOptionFlags return flags for option
 func (p *Amazon) GetOptionFlags() []types.Flag {
 	return p.sharedFlags()
 }
 
+// GetDeleteFlags return delete flags for aws provider
 func (p *Amazon) GetDeleteFlags() []types.Flag {
 	return []types.Flag{
 		{
@@ -86,12 +90,14 @@ func (p *Amazon) GetDeleteFlags() []types.Flag {
 	}
 }
 
+// GetJoinFlags return join flags for aws provider
 func (p *Amazon) GetJoinFlags() []types.Flag {
 	fs := p.sharedFlags()
 	fs = append(fs, p.GetClusterOptions()...)
 	return fs
 }
 
+// GetSSHFlags return ssh flags for aws provider
 func (p *Amazon) GetSSHFlags() []types.Flag {
 	fs := []types.Flag{
 		{
@@ -115,6 +121,7 @@ func (p *Amazon) GetSSHFlags() []types.Flag {
 	return fs
 }
 
+// GetCredentialFlags return credential flags for aws provider
 func (p *Amazon) GetCredentialFlags() []types.Flag {
 	fs := []types.Flag{
 		{
@@ -138,6 +145,7 @@ func (p *Amazon) GetCredentialFlags() []types.Flag {
 	return fs
 }
 
+// GetSSHConfig return default ssh config for aws provider
 func (p *Amazon) GetSSHConfig() *types.SSH {
 	ssh := &types.SSH{
 		SSHUser: defaultUser,
@@ -146,6 +154,7 @@ func (p *Amazon) GetSSHConfig() *types.SSH {
 	return ssh
 }
 
+// BindCredential persistent credential from flags to db.
 func (p *Amazon) BindCredential() error {
 	secretMap := map[string]string{
 		"access-key": p.AccessKey,
@@ -154,6 +163,7 @@ func (p *Amazon) BindCredential() error {
 	return p.SaveCredential(secretMap)
 }
 
+// MergeClusterOptions merge cluster options with default value
 func (p *Amazon) MergeClusterOptions() error {
 	opt, err := p.MergeConfig()
 	if err != nil {

@@ -186,7 +186,7 @@ func (d *DockerDialer) Terminal() error {
 	return nil
 }
 
-// WebSocketTerminal open docker websocket terminal.
+// OpenTerminal open docker websocket terminal.
 func (d *DockerDialer) OpenTerminal() error {
 	return d.ExecStart(false)
 }
@@ -244,7 +244,7 @@ func (d *DockerDialer) ExecStart(needRestore bool) error {
 	return nil
 }
 
-// Borrowed from https://github.com/docker/cli/blob/master/cli/command/container/exec.go#L180.
+// Wait for exit. Borrowed from https://github.com/docker/cli/blob/master/cli/command/container/exec.go#L180.
 func (d *DockerDialer) Wait() error {
 	resp, err := d.client.ContainerExecInspect(d.ctx, d.execID)
 	if err != nil {
@@ -340,7 +340,7 @@ func (d *DockerDialer) MonitorTtySize(ctx context.Context) error {
 	return nil
 }
 
-// Borrowed from https://github.com/docker/cli/blob/master/cli/command/container/hijack.go#L74.
+// setInput Borrowed from https://github.com/docker/cli/blob/master/cli/command/container/hijack.go#L74.
 func (d *DockerDialer) setInput(needRestore bool) (restore func(), err error) {
 	if d.Stdin == nil {
 		// no need to setup input TTY.
@@ -380,7 +380,7 @@ func (d *DockerDialer) setInput(needRestore bool) (restore func(), err error) {
 	return restore, nil
 }
 
-// Borrowed from https://github.com/docker/cli/blob/master/cli/command/container/hijack.go#L111.
+// beginOutputStream Borrowed from https://github.com/docker/cli/blob/master/cli/command/container/hijack.go#L111.
 func (d *DockerDialer) beginOutputStream(restoreInput func()) <-chan error {
 	outputDone := make(chan error)
 	go func() {
@@ -404,7 +404,7 @@ func (d *DockerDialer) beginOutputStream(restoreInput func()) <-chan error {
 	return outputDone
 }
 
-// Borrowed from https://github.com/docker/cli/blob/master/cli/command/container/hijack.go#L144.
+// beginInputStream Borrowed from https://github.com/docker/cli/blob/master/cli/command/container/hijack.go#L144.
 func (d *DockerDialer) beginInputStream(restoreInput func()) (doneC <-chan struct{}, detachedC <-chan error) {
 	inputDone := make(chan struct{})
 	detached := make(chan error)
@@ -445,6 +445,7 @@ func (d *DockerDialer) ChangeWindowSize(win *WindowSize) error {
 	return d.ResizeTtyTo(d.ctx, uint(win.Height), uint(win.Width))
 }
 
+// Write
 func (d *DockerDialer) Write(b []byte) error {
 	return nil
 }

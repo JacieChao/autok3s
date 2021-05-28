@@ -48,30 +48,31 @@ func newProvider() *Native {
 	}
 }
 
-func (p *Native) GetProviderName() string {
-	return "native"
-}
-
+// GenerateClusterName generate cluster id
 func (p *Native) GenerateClusterName() string {
 	p.ContextName = p.Name
 	return p.ContextName
 }
 
+// GenerateManifest not supported
 func (p *Native) GenerateManifest() []string {
 	// no need to support
 	return nil
 }
 
+// GenerateMasterExtraArgs not supported
 func (p *Native) GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string {
 	// no need to support.
 	return ""
 }
 
+// GenerateWorkerExtraArgs not supported
 func (p *Native) GenerateWorkerExtraArgs(cluster *types.Cluster, worker types.Node) string {
 	// no need to support.
 	return ""
 }
 
+// CreateK3sCluster create K3s cluster by native provider
 func (p *Native) CreateK3sCluster() (err error) {
 	logFile, err := common.GetLogFile(p.Name)
 	if err != nil {
@@ -139,6 +140,7 @@ func (p *Native) CreateK3sCluster() (err error) {
 	return nil
 }
 
+// JoinK3sNode join nodes for cluster managed by native provider
 func (p *Native) JoinK3sNode() (err error) {
 	if p.M == nil {
 		p.M = new(syncmap.Map)
@@ -230,6 +232,7 @@ func (p *Native) JoinK3sNode() (err error) {
 	return nil
 }
 
+// Rollback to uninstall K3s when something gets wrong
 func (p *Native) Rollback() error {
 	return p.RollbackCluster(func(ids []string) error {
 		nodes := make([]types.Node, 0)
@@ -260,6 +263,7 @@ func (p *Native) rollbackInstance(ids []string) error {
 	return nil
 }
 
+// CreateCheck will valid flags before create
 func (p *Native) CreateCheck() error {
 	if p.MasterIps == "" {
 		return fmt.Errorf("[%s] cluster must have one master when create", p.GetProviderName())
@@ -282,6 +286,7 @@ func (p *Native) CreateCheck() error {
 	return nil
 }
 
+// JoinCheck will valid flags before join
 func (p *Native) JoinCheck() error {
 	if p.MasterIps == "" && p.WorkerIps == "" {
 		return fmt.Errorf("[%s] cluster must have one node when join", p.GetProviderName())
@@ -304,30 +309,37 @@ func (p *Native) JoinCheck() error {
 	return nil
 }
 
+// DeleteK3sCluster not supported
 func (p *Native) DeleteK3sCluster(f bool) error {
 	return p.CommandNotSupport("delete")
 }
 
+// SSHK3sNode not supported
 func (p *Native) SSHK3sNode(ip string) error {
 	return p.CommandNotSupport("ssh")
 }
 
+// CommandNotSupport return not support command name
 func (p *Native) CommandNotSupport(commandName string) error {
 	return fmt.Errorf("[%s] dose not support command: [%s]", p.GetProviderName(), commandName)
 }
 
+// DescribeCluster not supported
 func (p *Native) DescribeCluster(kubecfg string) *types.ClusterInfo {
 	return &types.ClusterInfo{}
 }
 
+// GetCluster not supported
 func (p *Native) GetCluster(kubecfg string) *types.ClusterInfo {
 	return &types.ClusterInfo{}
 }
 
+// IsClusterExist not supported
 func (p *Native) IsClusterExist() (bool, []string, error) {
 	return false, []string{}, nil
 }
 
+// SetConfig merge flags with default flag value
 func (p *Native) SetConfig(config []byte) error {
 	c, err := p.SetClusterConfig(config)
 	if err != nil {
@@ -348,6 +360,7 @@ func (p *Native) SetConfig(config []byte) error {
 	return nil
 }
 
+// SetOptions merge options with default option value
 func (p *Native) SetOptions(opt []byte) error {
 	sourceOption := reflect.ValueOf(&p.Options).Elem()
 	option := &native.Options{}
@@ -360,6 +373,7 @@ func (p *Native) SetOptions(opt []byte) error {
 	return nil
 }
 
+// GetProviderOptions returns alibaba provider option value
 func (p *Native) GetProviderOptions(opt []byte) (interface{}, error) {
 	options := &native.Options{}
 	err := json.Unmarshal(opt, options)

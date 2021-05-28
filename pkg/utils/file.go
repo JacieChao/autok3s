@@ -2,10 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-
-	"github.com/ghodss/yaml"
 )
 
 const (
@@ -15,6 +12,7 @@ const (
 	UserProfileEnv = "USERPROFILE"
 )
 
+// EnsureFolderExist will create folder if not exist
 func EnsureFolderExist(path string) error {
 	if path == "" {
 		return fmt.Errorf("path %s cannot be empty", path)
@@ -26,6 +24,7 @@ func EnsureFolderExist(path string) error {
 	return nil
 }
 
+// EnsureFileExist will create new file if not exist
 func EnsureFileExist(path, file string) error {
 	if err := EnsureFolderExist(path); err != nil {
 		return err
@@ -41,6 +40,7 @@ func EnsureFileExist(path, file string) error {
 	return nil
 }
 
+// UserHome return user home path
 func UserHome() string {
 	if home := os.Getenv(HomeEnv); home != "" {
 		return home
@@ -51,26 +51,4 @@ func UserHome() string {
 		return homeDrive + homePath
 	}
 	return os.Getenv(UserProfileEnv)
-}
-
-func WriteYaml(source interface{}, path, name string) error {
-	b, err := yaml.Marshal(source)
-	if err != nil {
-		return err
-	}
-
-	n := fmt.Sprintf("%s/%s", path, name)
-
-	if _, err := os.Stat(n); os.IsNotExist(err) {
-		f, err := os.Create(n)
-		if err != nil {
-			return err
-		}
-
-		defer func() {
-			_ = f.Close()
-		}()
-	}
-
-	return ioutil.WriteFile(n, b, 0644)
 }

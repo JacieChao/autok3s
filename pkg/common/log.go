@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// NewLogger returns logger for autok3s
 func NewLogger(debug bool, w *os.File) *logrus.Logger {
 	logger := logrus.New()
 	if debug {
@@ -24,10 +25,12 @@ func NewLogger(debug bool, w *os.File) *logrus.Logger {
 	return logger
 }
 
+// GetLogPath returns default log file path
 func GetLogPath() string {
 	return filepath.Join(CfgPath, "logs")
 }
 
+// GetLogFile returns default log file for provider
 func GetLogFile(name string) (logFile *os.File, err error) {
 	logFilePath := filepath.Join(GetLogPath(), name)
 	// check file exist

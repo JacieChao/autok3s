@@ -25,6 +25,7 @@ func init() {
 	createCmd.Flags().StringVarP(&cProvider, "provider", "p", cProvider, "Provider is a module which provides an interface for managing cloud resources")
 }
 
+// CreateCommand returns create command for autok3s cli
 func CreateCommand() *cobra.Command {
 	// load dynamic provider flags.
 	pStr := common.FlagHackLookup("--provider")

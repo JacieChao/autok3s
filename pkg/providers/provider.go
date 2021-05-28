@@ -20,64 +20,65 @@ var (
 
 // Provider is an abstract, pluggable interface for k3s provider.
 type Provider interface {
+	// GetProviderName returns provider name
 	GetProviderName() string
-	// Get command usage example.
+	// GetUsageExample return command usage example.
 	GetUsageExample(action string) string
-	// create flags.
+	// GetCreateFlags return create flags.
 	GetCreateFlags() []types.Flag
-	// Create flags of provider options.
+	// GetOptionFlags return create flags of provider options.
 	GetOptionFlags() []types.Flag
-	// Join command flags.
+	// GetJoinFlags return join command flags.
 	GetJoinFlags() []types.Flag
-	// Delete command flags.
+	// GetDeleteFlags return delete command flags.
 	GetDeleteFlags() []types.Flag
-	// SSH command flags.
+	// GetSSHFlags return SSH command flags.
 	GetSSHFlags() []types.Flag
-	// Credential flags.
+	// GetCredentialFlags return credential flags.
 	GetCredentialFlags() []types.Flag
-	// Generate cluster name.
+	// GenerateClusterName Generate cluster id.
 	GenerateClusterName() string
-	// create/join extra master args for different provider.
+	// GenerateMasterExtraArgs return create/join extra master args for different provider.
 	GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string
-	// create/join extra worker args for different provider.
+	// GenerateWorkerExtraArgs return create/join extra worker args for different provider.
 	GenerateWorkerExtraArgs(cluster *types.Cluster, worker types.Node) string
-	// K3s create cluster interface.
+	// CreateK3sCluster create K3s cluster interface.
 	CreateK3sCluster() error
-	// K3s join node interface.
+	// JoinK3sNode join K3s node interface.
 	JoinK3sNode() error
-	// K3s delete cluster interface.
+	// DeleteK3sCluster delete K3s cluster interface.
 	DeleteK3sCluster(f bool) error
-	// K3s ssh node interface.
+	// SSHK3sNode ssh to specified K3s node.
 	SSHK3sNode(node string) error
-	// K3s check cluster exist.
+	// IsClusterExist check cluster is exist.
 	IsClusterExist() (bool, []string, error)
-	// merge exist cluster options
+	// MergeClusterOptions merge exist cluster options
 	MergeClusterOptions() error
-	// describe detailed cluster information.
+	// DescribeCluster shows detailed cluster information.
 	DescribeCluster(kubecfg string) *types.ClusterInfo
-	// get cluster simple information.
+	// GetCluster return cluster simple information.
 	GetCluster(kubecfg string) *types.ClusterInfo
-	// get default ssh config for provider.
+	// GetSSHConfig return default ssh config for provider.
 	GetSSHConfig() *types.SSH
-	// set cluster configuration of provider.
+	// SetConfig set cluster configuration of provider.
 	SetConfig(config []byte) error
-	// validate create flags.
+	// CreateCheck validate create flags.
 	CreateCheck() error
-	// merge metadata configs for provider.
+	// SetMetadata merge metadata configs for provider.
 	SetMetadata(config *types.Metadata)
-	// merge provider options.
+	// SetOptions merge provider options.
 	SetOptions(opt []byte) error
-	// validate join flags.
+	// JoinCheck validate join flags.
 	JoinCheck() error
-	// get cluster config options.
+	// GetClusterOptions return cluster config options.
 	GetClusterOptions() []types.Flag
-	// get create command options.
+	// GetCreateOptions return create command options.
 	GetCreateOptions() []types.Flag
-	// convert options to specified provider option interface.
+	// GetProviderOptions convert options to specified provider option interface.
 	GetProviderOptions(opt []byte) (interface{}, error)
-	// persistent credential from flags to db.
+	// BindCredential persistent credential from flags to db.
 	BindCredential() error
-	// callback functions used for execute logic after create/join
+	// RegisterCallbacks register callback functions which is used for execute logic after create/join
 	RegisterCallbacks(name, event string, fn func(interface{}))
 }
 
@@ -104,6 +105,7 @@ func GetProvider(name string) (Provider, error) {
 	return f()
 }
 
+// ListProviders list all providers that have registered to autok3s
 func ListProviders() []apis.Provider {
 	providersMutex.Lock()
 	defer providersMutex.Unlock()

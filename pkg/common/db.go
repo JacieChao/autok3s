@@ -98,6 +98,7 @@ var (
 	}
 )
 
+// InitStorage
 func InitStorage() error {
 	if err := utils.EnsureFileExist(filepath.Join(CfgPath, DBFolder), DBFile); err != nil {
 		return err
@@ -117,6 +118,7 @@ func setup(db *gorm.DB) {
 	}
 }
 
+// GetDB returns DB connection
 func GetDB() (*gorm.DB, error) {
 	dataSource := GetDataSource()
 	return gorm.Open(sqlite.Open(dataSource), &gorm.Config{})

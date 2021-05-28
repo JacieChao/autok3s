@@ -66,28 +66,29 @@ func newProvider() *K3d {
 	}
 }
 
-func (p *K3d) GetProviderName() string {
-	return p.Provider
-}
-
+// GenerateClusterName generate cluster id
 func (p *K3d) GenerateClusterName() string {
 	// must comply with the k3d cluster name rules.
 	p.ContextName = fmt.Sprintf("%s-%s", p.GetProviderName(), p.Name)
 	return p.ContextName
 }
 
+// CreateK3sCluster create K3s cluster by k3d provider
 func (p *K3d) CreateK3sCluster() (err error) {
 	return p.InitCluster(p.Options, nil, p.createK3d, p.obtainKubeCfg, p.rollbackK3d)
 }
 
+// JoinK3sNode join nodes for cluster managed by k3d provider
 func (p *K3d) JoinK3sNode() (err error) {
 	return p.JoinNodes(p.joinK3d, p.syncK3d, true, p.rollbackK3d)
 }
 
+// DeleteK3sCluster remove cluster
 func (p *K3d) DeleteK3sCluster(f bool) (err error) {
 	return p.DeleteCluster(f, p.deleteK3d)
 }
 
+// SSHK3sNode ssh to specified docker container
 func (p *K3d) SSHK3sNode(ip string) error {
 	c := &types.Cluster{
 		Metadata: p.Metadata,
@@ -97,6 +98,7 @@ func (p *K3d) SSHK3sNode(ip string) error {
 	return p.Connect(ip, nil, c, p.k3dStatus, p.isNodeRunning, p.attachNode)
 }
 
+// IsClusterExist check cluster exists
 func (p *K3d) IsClusterExist() (bool, []string, error) {
 	ids := make([]string, 0)
 
@@ -123,6 +125,7 @@ func (p *K3d) IsClusterExist() (bool, []string, error) {
 	return len(ids) > 0, ids, nil
 }
 
+// SetConfig merge flags with default flag value
 func (p *K3d) SetOptions(opt []byte) error {
 	sourceOption := reflect.ValueOf(&p.Options).Elem()
 	option := &typesk3d.Options{}
@@ -135,6 +138,7 @@ func (p *K3d) SetOptions(opt []byte) error {
 	return nil
 }
 
+// GetCluster get cluster information
 func (p *K3d) GetCluster(kubeConfig string) *types.ClusterInfo {
 	c := &types.ClusterInfo{
 		ID:       p.ContextName,
@@ -147,6 +151,7 @@ func (p *K3d) GetCluster(kubeConfig string) *types.ClusterInfo {
 	return p.GetClusterStatus(kubeConfig, c, p.k3dStatus)
 }
 
+// DescribeCluster
 func (p *K3d) DescribeCluster(kubeConfig string) *types.ClusterInfo {
 	c := &types.ClusterInfo{
 		Name:     p.Name,
@@ -155,12 +160,14 @@ func (p *K3d) DescribeCluster(kubeConfig string) *types.ClusterInfo {
 	return p.Describe(kubeConfig, c, p.k3dStatus)
 }
 
+// GetProviderOptions returns k3d provider option value
 func (p *K3d) GetProviderOptions(opt []byte) (interface{}, error) {
 	options := &typesk3d.Options{}
 	err := json.Unmarshal(opt, options)
 	return options, err
 }
 
+// SetConfig merge flags with default flag value
 func (p *K3d) SetConfig(config []byte) error {
 	c, err := p.SetClusterConfig(config)
 	if err != nil {
@@ -182,6 +189,7 @@ func (p *K3d) SetConfig(config []byte) error {
 	return nil
 }
 
+// CreateCheck will valid flags before create
 func (p *K3d) CreateCheck() error {
 	masterNum, err := strconv.Atoi(p.Master)
 	if masterNum < 1 || err != nil {
@@ -218,6 +226,7 @@ func (p *K3d) CreateCheck() error {
 	return nil
 }
 
+// JoinCheck will valid flags before join
 func (p *K3d) JoinCheck() error {
 	// check cluster exist.
 	exist, _, err := p.IsClusterExist()
@@ -259,10 +268,12 @@ func (p *K3d) JoinCheck() error {
 	return nil
 }
 
+// GenerateMasterExtraArgs
 func (p *K3d) GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string {
 	return ""
 }
 
+// GenerateWorkerExtraArgs
 func (p *K3d) GenerateWorkerExtraArgs(cluster *types.Cluster, worker types.Node) string {
 	return ""
 }

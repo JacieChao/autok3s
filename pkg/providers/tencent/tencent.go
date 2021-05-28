@@ -100,15 +100,13 @@ func newProvider() *Tencent {
 	}
 }
 
-func (p *Tencent) GetProviderName() string {
-	return providerName
-}
-
+// GenerateClusterName generate cluster id
 func (p *Tencent) GenerateClusterName() string {
 	p.ContextName = fmt.Sprintf("%s.%s.%s", p.Name, p.Region, p.GetProviderName())
 	return p.ContextName
 }
 
+// GenerateManifest generate CCM manifest for tencent provider
 func (p *Tencent) GenerateManifest() []string {
 	if p.CloudControllerManager {
 		// deploy additional Tencent cloud-controller-manager manifests.
@@ -129,6 +127,7 @@ func (p *Tencent) GenerateManifest() []string {
 	return nil
 }
 
+// CreateK3sCluster create K3s cluster by tencent provider
 func (p *Tencent) CreateK3sCluster() (err error) {
 	if p.SSHUser == "" {
 		p.SSHUser = defaultUser
@@ -136,6 +135,7 @@ func (p *Tencent) CreateK3sCluster() (err error) {
 	return p.InitCluster(p.Options, p.GenerateManifest, p.generateInstance, nil, p.rollbackInstance)
 }
 
+// JoinK3sNode join nodes for cluster managed by tencent provider
 func (p *Tencent) JoinK3sNode() (err error) {
 	if p.SSHUser == "" {
 		p.SSHUser = defaultUser
@@ -144,6 +144,7 @@ func (p *Tencent) JoinK3sNode() (err error) {
 	return p.JoinNodes(p.generateInstance, func() error { return nil }, false, p.rollbackInstance)
 }
 
+// Rollback instance when something gets wrong
 func (p *Tencent) Rollback() error {
 	return p.RollbackCluster(p.rollbackInstance)
 }
@@ -203,10 +204,12 @@ func (p *Tencent) rollbackInstance(ids []string) error {
 	return nil
 }
 
+// DeleteK3sCluster remove cluster and instances at CVM
 func (p *Tencent) DeleteK3sCluster(f bool) error {
 	return p.DeleteCluster(f, p.deleteInstance)
 }
 
+// SSHK3sNode ssh to specified CVM node
 func (p *Tencent) SSHK3sNode(ip string) error {
 	c := &types.Cluster{
 		Metadata: p.Metadata,
@@ -251,6 +254,7 @@ func (p *Tencent) getInstanceNodes() ([]types.Node, error) {
 	return nodes, nil
 }
 
+// IsClusterExist check cluster exists
 func (p *Tencent) IsClusterExist() (bool, []string, error) {
 	ids := make([]string, 0)
 
@@ -277,6 +281,7 @@ func (p *Tencent) IsClusterExist() (bool, []string, error) {
 	return false, ids, nil
 }
 
+// GenerateMasterExtraArgs generate master-extra-args for tencent CCM
 func (p *Tencent) GenerateMasterExtraArgs(cluster *types.Cluster, master types.Node) string {
 	if option, ok := cluster.Options.(tencent.Options); ok {
 		if option.CloudControllerManager {
@@ -288,10 +293,12 @@ func (p *Tencent) GenerateMasterExtraArgs(cluster *types.Cluster, master types.N
 	return ""
 }
 
+// GenerateWorkerExtraArgs generate worker-extra-args for tencent CCM
 func (p *Tencent) GenerateWorkerExtraArgs(cluster *types.Cluster, worker types.Node) string {
 	return p.GenerateMasterExtraArgs(cluster, worker)
 }
 
+// GetCluster get cluster information
 func (p *Tencent) GetCluster(kubecfg string) *types.ClusterInfo {
 	c := &types.ClusterInfo{
 		ID:       p.ContextName,
@@ -307,6 +314,7 @@ func (p *Tencent) GetCluster(kubecfg string) *types.ClusterInfo {
 	return p.GetClusterStatus(kubecfg, c, p.getInstanceNodes)
 }
 
+// DescribeCluster
 func (p *Tencent) DescribeCluster(kubecfg string) *types.ClusterInfo {
 	c := &types.ClusterInfo{
 		Name:     p.Name,
@@ -317,6 +325,7 @@ func (p *Tencent) DescribeCluster(kubecfg string) *types.ClusterInfo {
 	return p.Describe(kubecfg, c, p.getInstanceNodes)
 }
 
+// SetOptions merge options with default option value
 func (p *Tencent) SetOptions(opt []byte) error {
 	sourceOption := reflect.ValueOf(&p.Options).Elem()
 	option := &tencent.Options{}
@@ -329,6 +338,7 @@ func (p *Tencent) SetOptions(opt []byte) error {
 	return nil
 }
 
+// SetConfig merge flags with default flag value
 func (p *Tencent) SetConfig(config []byte) error {
 	c, err := p.SetClusterConfig(config)
 	if err != nil {
@@ -350,6 +360,7 @@ func (p *Tencent) SetConfig(config []byte) error {
 	return nil
 }
 
+// GetProviderOptions returns alibaba provider option value
 func (p *Tencent) GetProviderOptions(opt []byte) (interface{}, error) {
 	options := &tencent.Options{}
 	err := json.Unmarshal(opt, options)
@@ -583,6 +594,7 @@ func (p *Tencent) deleteInstance(f bool) (string, error) {
 	return p.ContextName, nil
 }
 
+// CreateCheck will valid flags before create
 func (p *Tencent) CreateCheck() error {
 	if p.KeypairID != "" && p.SSHKeyPath == "" {
 		return fmt.Errorf("[%s] calling preflight error: --ssh-key-path must set with --key-pair %s", p.GetProviderName(), p.KeypairID)
@@ -634,6 +646,7 @@ func (p *Tencent) CreateCheck() error {
 	return nil
 }
 
+// JoinCheck will valid flags before join
 func (p *Tencent) JoinCheck() error {
 	if p.Master == "0" && p.Worker == "0" {
 		return fmt.Errorf("[%s] calling preflight error: `--master` or `--worker` number must >= 1", p.GetProviderName())
@@ -801,7 +814,6 @@ func (p *Tencent) describeInstances() ([]*cvm.Instance, error) {
 		{Name: tencentCommon.StringPtr("tag:autok3s"), Values: tencentCommon.StringPtrs([]string{"true"})},
 		{Name: tencentCommon.StringPtr("tag:cluster"), Values: tencentCommon.StringPtrs([]string{common.TagClusterPrefix + p.ContextName})},
 	}
-	offset := int64(0)
 	index := int64(0)
 	instanceList := make([]*cvm.Instance, 0)
 	for {
@@ -816,7 +828,7 @@ func (p *Tencent) describeInstances() ([]*cvm.Instance, error) {
 		for _, ins := range response.Response.InstanceSet {
 			instanceList = append(instanceList, ins)
 		}
-		offset = limit*index + limit
+		offset := limit*index + limit
 		index = index + 1
 		if offset >= total {
 			break

@@ -45,27 +45,36 @@ func (d *PtyDialer) Close() error {
 	return nil
 }
 
-// SetStdio set dialer's reader and writer.
-func (d *PtyDialer) SetStdio(stdout, stderr io.Writer, stdin io.ReadCloser) *PtyDialer {
+// SetIO set dialer's reader and writer.
+func (d *PtyDialer) SetIO(stdout, stderr io.Writer, stdin io.ReadCloser) {
 	d.Stdout = stdout
 	d.Stderr = stderr
 	d.Stdin = stdin
-	return d
 }
 
-// SetDefaultSize set dialer's default win size.
-func (d *PtyDialer) SetDefaultSize(height, weight int) *PtyDialer {
+// SetWindowSize set dialer's default win size.
+func (d *PtyDialer) SetWindowSize(height, weight int) *PtyDialer {
 	d.Height = height
 	d.Weight = weight
 	return d
 }
 
-// WebSocketTerminal open pty websocket terminal.
-func (d *PtyDialer) WebSocketTerminal() error {
+// OpenTerminal open pty websocket terminal.
+func (d *PtyDialer) OpenTerminal() error {
 	return fmt.Errorf("not support windows")
 }
 
-// ChangeSize changes to the current win size.
-func (d *PtyDialer) ChangeSize(win *WindowSize) error {
-	return nil
+// ChangeWindowSize changes to the current win size.
+func (d *PtyDialer) ChangeWindowSize(win *WindowSize) error {
+	return fmt.Errorf("not support windows")
+}
+
+// Wait waits for the command to exit.
+func (d *PtyDialer) Wait() error {
+	return fmt.Errorf("not support windows")
+}
+
+// Write
+func (d *PtyDialer) Write(b []byte) error {
+	return fmt.Errorf("not support windows")
 }

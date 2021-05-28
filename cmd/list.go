@@ -18,6 +18,7 @@ var (
 	}
 )
 
+// ListCommand returns list command for autok3s cli
 func ListCommand() *cobra.Command {
 	listCmd.Run = func(cmd *cobra.Command, args []string) {
 		listCluster()

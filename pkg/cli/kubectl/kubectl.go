@@ -14,7 +14,7 @@ import (
 	"k8s.io/kubectl/pkg/cmd"
 )
 
-// Borrowed from https://github.com/kubernetes/kubernetes/blob/master/cmd/kubectl/kubectl.go.
+// Main Borrowed from https://github.com/kubernetes/kubernetes/blob/master/cmd/kubectl/kubectl.go.
 func Main() {
 	rand.Seed(time.Now().UnixNano())
 
@@ -30,6 +30,7 @@ func Main() {
 	}
 }
 
+// EmbedCommand embed kubectl to autok3s cli
 func EmbedCommand() *cobra.Command {
 	c := cmd.NewDefaultKubectlCommand()
 	c.Short = "Kubectl controls the Kubernetes cluster manager"

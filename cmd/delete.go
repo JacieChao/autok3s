@@ -26,6 +26,7 @@ func init() {
 	deleteCmd.Flags().BoolVarP(&force, "force", "f", force, "Force delete cluster")
 }
 
+// DeleteCommand returns delete command for autok3s cli
 func DeleteCommand() *cobra.Command {
 	pStr := common.FlagHackLookup("--provider")
 

@@ -13,6 +13,7 @@ type Broadcaster struct {
 	m    sync.RWMutex
 }
 
+// NewBroadcaster returns a new Broadcaster for subscribers
 func NewBroadcaster() *Broadcaster {
 	return &Broadcaster{
 		subs: make(map[Subscriber]subscriberFunc),

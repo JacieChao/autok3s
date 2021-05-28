@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// BindEnvFlags bind flag values with environment variables
 func BindEnvFlags(cmd *cobra.Command) {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
 		envAnnotation := f.Annotations[utils.BashCompEnvVarFlag]
@@ -28,7 +29,7 @@ func BindEnvFlags(cmd *cobra.Command) {
 	})
 }
 
-// Borrowed from https://github.com/docker/machine/blob/master/commands/create.go#L267.
+// FlagHackLookup Borrowed from https://github.com/docker/machine/blob/master/commands/create.go#L267.
 func FlagHackLookup(flagName string) string {
 	// i.e. "-d" for "--driver"
 	flagPrefix := flagName[1:3]
@@ -64,6 +65,7 @@ func isCredentialFlag(s string, p providers.Provider) bool {
 	return found
 }
 
+// MakeSureCredentialFlag ensure credential flags which have been set by environment variables or from db
 func MakeSureCredentialFlag(flags *pflag.FlagSet, p providers.Provider) error {
 	flags.VisitAll(func(flag *pflag.Flag) {
 		if isCredentialFlag(flag.Name, p) {

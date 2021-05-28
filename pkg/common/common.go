@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	StateFile          = ".state"
 	KubeCfgFile        = ".kube/config"
 	KubeCfgTempName    = "autok3s-temp-*"
 	K3sManifestsDir    = "/var/lib/rancher/k3s/server/manifests"
@@ -40,18 +39,22 @@ var (
 	DefaultDB *Store
 )
 
+// GetDefaultSSHKeyPath returns the default path for generated ssh file
 func GetDefaultSSHKeyPath(clusterName, providerName string) string {
 	return filepath.Join(CfgPath, providerName, "clusters", clusterName, "id_rsa")
 }
 
+// GetDefaultSSHPublicKeyPath returns the default path for generated ssh public key file
 func GetDefaultSSHPublicKeyPath(clusterName, providerName string) string {
 	return filepath.Join(CfgPath, providerName, "clusters", clusterName, "id_rsa.pub")
 }
 
+// GetClusterPath returns cluster file path for provider
 func GetClusterPath(clusterName, providerName string) string {
 	return filepath.Join(CfgPath, providerName, "clusters", clusterName)
 }
 
+// GetDataSource returns DB file path
 func GetDataSource() string {
 	return filepath.Join(CfgPath, DBFolder, DBFile)
 }

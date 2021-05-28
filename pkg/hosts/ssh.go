@@ -115,6 +115,7 @@ func (d *SSHDialer) Dial(t bool) (*ssh.Client, error) {
 	return ssh.Dial("tcp", d.sshAddress, cfg)
 }
 
+// NewSession generate new session for ssh connection
 func (d *SSHDialer) NewSession() error {
 	session, err := d.conn.NewSession()
 	if err != nil {
@@ -124,7 +125,7 @@ func (d *SSHDialer) NewSession() error {
 	return nil
 }
 
-// Wait waits for the remote command to exit.
+// Wait for the remote command to exit.
 func (d *SSHDialer) Wait() error {
 	if d.session != nil {
 		return d.session.Wait()
@@ -153,14 +154,14 @@ func (d *SSHDialer) SetStdio(stdout, stderr io.Writer, stdin io.ReadCloser) *SSH
 	return d
 }
 
-// SetStdio set dialer's reader and writer.
+// SetIO set dialer's reader and writer.
 func (d *SSHDialer) SetIO(stdout, stderr io.Writer, stdin io.ReadCloser) {
 	d.Stdout = stdout
 	d.Stderr = stderr
 	d.Stdin = stdin
 }
 
-// SetDefaultSize set dialer's default window size.
+// SetWindowSize set dialer's default window size.
 func (d *SSHDialer) SetWindowSize(height, weight int) {
 	d.Height = height
 	d.Weight = weight
@@ -322,6 +323,7 @@ func (d *SSHDialer) executeCommand(cmd string) error {
 	return err
 }
 
+// Write
 func (d *SSHDialer) Write(b []byte) error {
 	return nil
 }

@@ -39,6 +39,7 @@ const sshUsageExample = `  autok3s ssh \
     --access-secret <access-secret>
 `
 
+// GetUsageExample returns cli usage example for alibaba provider
 func (p *Alibaba) GetUsageExample(action string) string {
 	switch action {
 	case "create":
@@ -54,6 +55,7 @@ func (p *Alibaba) GetUsageExample(action string) string {
 	}
 }
 
+// GetCreateFlags return create flags for alibaba provider
 func (p *Alibaba) GetCreateFlags() []types.Flag {
 	cSSH := p.GetSSHConfig()
 	p.SSH = *cSSH
@@ -62,10 +64,12 @@ func (p *Alibaba) GetCreateFlags() []types.Flag {
 	return fs
 }
 
+// GetOptionFlags return flags for option
 func (p *Alibaba) GetOptionFlags() []types.Flag {
 	return p.sharedFlags()
 }
 
+// GetDeleteFlags return delete flags for alibaba provider
 func (p *Alibaba) GetDeleteFlags() []types.Flag {
 	return []types.Flag{
 		{
@@ -86,6 +90,7 @@ func (p *Alibaba) GetDeleteFlags() []types.Flag {
 	}
 }
 
+// MergeClusterOptions merge cluster options with default value
 func (p *Alibaba) MergeClusterOptions() error {
 	opt, err := p.MergeConfig()
 	if err != nil {
@@ -105,12 +110,14 @@ func (p *Alibaba) MergeClusterOptions() error {
 	return nil
 }
 
+// GetJoinFlags return join flags for alibaba provider
 func (p *Alibaba) GetJoinFlags() []types.Flag {
 	fs := p.sharedFlags()
 	fs = append(fs, p.GetClusterOptions()...)
 	return fs
 }
 
+// GetSSHFlags return ssh flags for alibaba provider
 func (p *Alibaba) GetSSHFlags() []types.Flag {
 	fs := []types.Flag{
 		{
@@ -134,6 +141,7 @@ func (p *Alibaba) GetSSHFlags() []types.Flag {
 	return fs
 }
 
+// GetCredentialFlags return credential flags for alibaba provider
 func (p *Alibaba) GetCredentialFlags() []types.Flag {
 	fs := []types.Flag{
 		{
@@ -157,6 +165,7 @@ func (p *Alibaba) GetCredentialFlags() []types.Flag {
 	return fs
 }
 
+// GetSSHConfig return default ssh config for alibaba provider
 func (p *Alibaba) GetSSHConfig() *types.SSH {
 	ssh := &types.SSH{
 		SSHUser: defaultUser,
@@ -165,6 +174,7 @@ func (p *Alibaba) GetSSHConfig() *types.SSH {
 	return ssh
 }
 
+// BindCredential persistent credential from flags to db.
 func (p *Alibaba) BindCredential() error {
 	secretMap := map[string]string{
 		accessKeyID:     p.AccessKey,
