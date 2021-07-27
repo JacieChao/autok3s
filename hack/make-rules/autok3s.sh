@@ -108,18 +108,6 @@ function build() {
               "${CURR_DIR}/main.go"
             cp -f "${CURR_DIR}/bin/autok3s_${os}_${arch}.exe" "${CURR_DIR}/dist/autok3s_${os}_${arch}.exe"
         fi
-    elif [[ "$arch" == "arm" ]]; then
-        GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 GOARM=7 CC=arm-linux-gnueabihf-gcc-5 CXX=arm-linux-gnueabihf-g++-5 CGO_CFLAGS="-march=armv7-a -fPIC" CGO_CXXFLAGS="-march=armv7-a -fPIC" go build \
-          -ldflags "${version_flags} ${flags} ${ext_flags}" \
-          -o "${CURR_DIR}/bin/autok3s_${os}_${arch}" \
-          "${CURR_DIR}/main.go"
-        cp -f "${CURR_DIR}/bin/autok3s_${os}_${arch}" "${CURR_DIR}/dist/autok3s_${os}_${arch}"
-    elif [[ "$arch" == "arm64" ]]; then
-        GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc-5 CXX=aarch64-linux-gnu-g++-5 go build \
-          -ldflags "${version_flags} ${flags} ${ext_flags}" \
-          -o "${CURR_DIR}/bin/autok3s_${os}_${arch}" \
-          "${CURR_DIR}/main.go"
-        cp -f "${CURR_DIR}/bin/autok3s_${os}_${arch}" "${CURR_DIR}/dist/autok3s_${os}_${arch}"
     elif [[ "$os" == "darwin" ]]; then
         GOOS=${os} GOARCH=${arch} CGO_ENABLED=1 go build \
           -ldflags "${version_flags} ${flags}" \
@@ -142,35 +130,14 @@ function package() {
   [[ "${1:-}" != "only" ]] && build
   autok3s::log::info "packaging autok3s..."
 
-  local repo=${REPO:-cnrancher}
-  local image_name=${IMAGE_NAME:-autok3s}
-  local tag=${TAG:-${GIT_VERSION}}
+  REPO=${REPO:-cnrancher}
+  SUFFIX=""
+  [ "${ARCH}" != "amd64" ] && SUFFIX="_${ARCH}"
+  TAG=${TAG:-${GIT_VERSION}${SUFFIX}}
+  IMAGE_NAME=${REPO}/autok3s:${TAG}
+  ARCH=${ARCH:-"amd64"}
 
-  local platforms
-  if [[ "${CROSS:-false}" == "true" ]]; then
-    autok3s::log::info "crossed packaging"
-    autok3s::docker::prebuild
-    platforms=("${SUPPORTED_PLATFORMS[@]}")
-  else
-    local os="${OS:-$(go env GOOS)}"
-    local arch="${ARCH:-$(go env GOARCH)}"
-    platforms=("${os}/${arch}")
-  fi
-
-  pushd "${CURR_DIR}" >/dev/null 2>&1
-  for platform in "${platforms[@]}"; do
-    if [[ "${platform}" =~ darwin/* || "${platform}" =~ windows/* ]]; then
-     autok3s::log::warn "package into Darwin/Windows OS image is unavailable, please use CROSS=true env to containerize multiple arch images or use OS=linux ARCH=amd64 env to containerize linux/amd64 image"
-     continue
-    fi
-
-    local image_tag="${repo}/${image_name}:${tag}-${platform////-}"
-    autok3s::log::info "packaging ${image_tag}"
-    autok3s::docker::build \
-      --platform "${platform}" \
-      -t "${image_tag}" --load .
-  done
-  popd >/dev/null 2>&1
+  docker build --build-arg ARCH=${ARCH} -t ${IMAGE_NAME} .
 
   autok3s::log::info "...done"
 }
@@ -314,7 +281,7 @@ function entry() {
 }
 
 if [[ ${BY:-} == "dapper" ]]; then
-  autok3s::dapper::run -C "${CURR_DIR}" -f "Dockerfile.dapper" "$@"
+  autok3s::dapper::run -C "${CURR_DIR}" -f "Dockerfile-autok3s.dapper" "$@"
 else
   entry "$@"
 fi
